@@ -1,10 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { LayoutDashboard, Timer, CheckSquare, Sun, Moon, ShieldAlert } from 'lucide-react';
+import MotivationPopup from './MotivationPopup';
 
 const Layout = ({ children }) => {
   const [darkMode, setDarkMode] = useState(localStorage.getItem('theme') === 'dark');
   const location = useLocation();
+
+  
 
   useEffect(() => {
     if (darkMode) {
@@ -40,6 +43,8 @@ const Layout = ({ children }) => {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition-colors duration-200 flex flex-col md:flex-row">
+
+      <MotivationPopup />
       
       {/* --- MOBILE TOP HEADER --- */}
       <header className="md:hidden fixed top-0 left-0 right-0 h-16 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between px-4 z-20">
