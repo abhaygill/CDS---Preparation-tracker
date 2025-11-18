@@ -65,7 +65,12 @@ const MotivationPopup = () => {
             onClick={handleClose}
             className="w-full py-3 bg-army-500 hover:bg-army-700 text-white font-semibold rounded-lg transition-all active:scale-95 shadow-lg shadow-army-500/30"
           >
-            Jai Hind! 🇮🇳
+            Jai Hind! 
+            <img 
+              src="https://flagcdn.com/w40/in.png" 
+              alt="Indian Flag" 
+              className="w-6 h-auto rounded-sm shadow-sm" 
+            />
           </button>
         </div>
 
