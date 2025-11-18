@@ -61,13 +61,20 @@ const MotivationPopup = () => {
             — {quote.author}
           </p>
 
-          <button onClick={handleClose} className="w-full py-3 bg-army-500 hover:bg-army-700 text-white font-semibold rounded-lg transition-all active:scale-95 shadow-lg shadow-army-500/30 flex items-center justify-center gap-2" >
-    <!-- The text and image are now wrapped in a single span for easier gap management -->
-    <span class="flex items-center gap-2">
-        <span>Jai Hind!</span>
-        <img src="https://flagcdn.com/w40/in.png" alt="Indian Flag" className="w-6 h-auto rounded-sm shadow-sm" />
-    </span>
+          <button
+  onClick={handleClose}
+  className="w-full py-3 bg-army-500 hover:bg-army-700 text-white font-semibold rounded-lg transition-all active:scale-95 shadow-lg shadow-army-500/30 flex items-center justify-center gap-2"
+>
+  <span className="flex items-center gap-2">
+    Jai Hind!
+    <img
+      src="https://flagcdn.com/w40/in.png"
+      alt="Indian Flag"
+      className="w-6 h-auto rounded-sm shadow-sm"
+    />
+  </span>
 </button>
+
 
         </div>
 
