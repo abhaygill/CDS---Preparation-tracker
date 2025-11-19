@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../lib/db';
-import { Play, Pause, Square, Save, RefreshCw } from 'lucide-react';
+import { Play, Pause, Square, Save, RefreshCw, AlertTriangle } from 'lucide-react';
 
 const StudyTimer = () => {
   const subjects = useLiveQuery(() => db.subjects.toArray());
@@ -12,12 +12,14 @@ const StudyTimer = () => {
   const [seconds, setSeconds] = useState(0);
   const [isActive, setIsActive] = useState(false);
   const [sessionStart, setSessionStart] = useState(null);
+  
+  // NEW: State for the shame modal
+  const [showShameModal, setShowShameModal] = useState(false);
 
   // --- Timer Persistence Logic ---
   useEffect(() => {
-    // Check if timer was running
     const savedStart = localStorage.getItem('timerStart');
-    const savedSeconds = localStorage.getItem('timerSeconds'); // elapsed before last pause
+    const savedSeconds = localStorage.getItem('timerSeconds'); 
     const savedIsActive = localStorage.getItem('timerIsActive') === 'true';
     const savedSub = localStorage.getItem('timerSubtopic');
     const savedSubj = localStorage.getItem('timerSubject');
@@ -27,7 +29,7 @@ const StudyTimer = () => {
 
     if (savedIsActive && savedStart) {
       setIsActive(true);
-      setSessionStart(parseInt(savedStart)); // The original start timestamp
+      setSessionStart(parseInt(savedStart)); 
     } else if (savedSeconds) {
       setSeconds(parseInt(savedSeconds));
     }
@@ -36,10 +38,8 @@ const StudyTimer = () => {
   useEffect(() => {
     let interval = null;
     if (isActive) {
-      // If active, calculate diff from start (resilient to tab throttling)
       const now = Date.now();
       if (!sessionStart) {
-         // First tick
          const start = now - (seconds * 1000);
          setSessionStart(start);
          localStorage.setItem('timerStart', start);
@@ -67,6 +67,30 @@ const StudyTimer = () => {
       if(selectedSubtopic) localStorage.setItem('timerSubtopic', selectedSubtopic);
   }, [selectedSubject, selectedSubtopic]);
 
+  // --- NEW: Intercept Pause Click ---
+  const handlePauseClick = () => {
+    // 60 minutes = 3600 seconds
+    if (seconds < 3600) {
+      setShowShameModal(true);
+    } else {
+      setIsActive(false); // Normal pause if over 60 mins
+    }
+  };
+
+  // Button 1: "Thank You bhai..."
+  const handleKeepStudying = () => {
+    setShowShameModal(false);
+    // Do nothing else, timer stays active
+  };
+
+  // Button 2: "Mera CDS clear nahi hoga..."
+  const handleGiveUp = () => {
+    setShowShameModal(false);
+    setIsActive(false); // Actually pause the timer
+    setTimeout(() => {
+        alert("Laanat hai bhai Tujhpe! 😡");
+    }, 100);
+  };
 
   const handleReset = () => {
     setIsActive(false);
@@ -77,8 +101,9 @@ const StudyTimer = () => {
   };
 
   const handleSave = async () => {
+    // 60 mins check for saving
     if (seconds < 3600) {
-      alert("Session too short to save (< 60 min).");
+      alert("Session too short to save (< 60 mins).");
       return;
     }
     if (!selectedSubtopic) {
@@ -96,7 +121,7 @@ const StudyTimer = () => {
     });
 
     handleReset();
-    alert("Session Saved!");
+    alert("Session Saved! Well done.");
   };
 
   const formatTime = (secs) => {
@@ -106,11 +131,48 @@ const StudyTimer = () => {
     return `${h > 0 ? h + ':' : ''}${m < 10 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}`;
   };
 
-  // Filter subtopics based on subject
   const filteredSubtopics = subtopics?.filter(s => s.subjectId === selectedSubject) || [];
 
   return (
-    <div className="max-w-2xl mx-auto space-y-8">
+    <div className="max-w-2xl mx-auto space-y-8 relative">
+      
+      {/* --- SHAME MODAL START --- */}
+      {showShameModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm animate-in fade-in zoom-in duration-200">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 md:p-8 max-w-md w-full border-2 border-red-500 shadow-2xl text-center space-y-6">
+            <div className="flex justify-center text-red-500 mb-2">
+                <AlertTriangle size={64} strokeWidth={2.5} />
+            </div>
+            
+            <h3 className="text-2xl font-bold text-gray-900 dark:text-white leading-tight">
+              Yeh kya Kar raha hai Bhosdike? <br/> 
+              <span className="text-red-500">Aise karega CDS clear?</span>
+            </h3>
+            
+            <p className="text-gray-500 dark:text-gray-400 text-sm">
+              You haven't even completed 1 hour yet. Weakness is not an option.
+            </p>
+
+            <div className="grid gap-3">
+                <button 
+                    onClick={handleKeepStudying}
+                    className="w-full py-4 bg-green-600 hover:bg-green-700 text-white font-bold rounded-xl shadow-lg transform transition active:scale-95"
+                >
+                    Thank You bhai, Mai padhungaa 💪
+                </button>
+
+                <button 
+                    onClick={handleGiveUp}
+                    className="w-full py-3 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 font-semibold rounded-xl hover:bg-red-200 dark:hover:bg-red-900/50 transition"
+                >
+                    Mera CDS clear nahii hogaa ❌
+                </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* --- SHAME MODAL END --- */}
+
       <div className="text-center space-y-2">
         <h2 className="text-3xl font-bold">Focus Timer</h2>
         <p className="text-gray-500">Select your target and start studying.</p>
@@ -148,7 +210,7 @@ const StudyTimer = () => {
 
         {/* Timer Display */}
         <div className="py-10 text-center">
-          <div className="text-8xl font-mono tracking-tighter text-army-500 dark:text-white">
+          <div className="text-6xl md:text-8xl font-mono tracking-tighter text-army-500 dark:text-white">
             {formatTime(seconds)}
           </div>
           <div className="mt-4 flex justify-center gap-4">
@@ -157,7 +219,8 @@ const StudyTimer = () => {
                 <Play size={20} /> Start
               </button>
             ) : (
-              <button onClick={() => setIsActive(false)} className="flex items-center gap-2 px-8 py-3 bg-yellow-500 hover:bg-yellow-600 text-white rounded-full text-lg font-semibold transition-transform active:scale-95">
+              // MODIFIED: Calls handlePauseClick instead of setting isActive directly
+              <button onClick={handlePauseClick} className="flex items-center gap-2 px-8 py-3 bg-yellow-500 hover:bg-yellow-600 text-white rounded-full text-lg font-semibold transition-transform active:scale-95">
                 <Pause size={20} /> Pause
               </button>
             )}
