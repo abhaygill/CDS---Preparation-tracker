@@ -77,8 +77,8 @@ const StudyTimer = () => {
   };
 
   const handleSave = async () => {
-    if (seconds < 60) {
-      alert("Session too short to save (< 1 min).");
+    if (seconds < 3600) {
+      alert("Session too short to save (< 60 min).");
       return;
     }
     if (!selectedSubtopic) {
