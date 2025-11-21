@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Timer, CheckSquare, Sun, Moon, ShieldAlert } from 'lucide-react';
+import { LayoutDashboard, Timer, CheckSquare, Sun, Moon, ShieldAlert, ListTodo } from 'lucide-react';
 import MotivationPopup from './MotivationPopup';
 
 const Layout = ({ children }) => {
@@ -67,6 +67,7 @@ const Layout = ({ children }) => {
           <NavItem to="/" icon={LayoutDashboard} label="Dashboard" />
           <NavItem to="/timer" icon={Timer} label="Study Timer" />
           <NavItem to="/progress" icon={CheckSquare} label="Progress" />
+          <NavItem to="/tasks" icon={ListTodo} label="Tasks" />
         </nav>
         <div className="p-4 border-t border-gray-200 dark:border-gray-700">
            <button onClick={() => setDarkMode(!darkMode)} className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 hover:text-army-500 w-full">
@@ -86,6 +87,7 @@ const Layout = ({ children }) => {
         <NavItem to="/" icon={LayoutDashboard} label="Home" mobile />
         <NavItem to="/timer" icon={Timer} label="Timer" mobile />
         <NavItem to="/progress" icon={CheckSquare} label="Topics" mobile />
+        <NavItem to="/tasks" icon={ListTodo} label="Tasks" mobile />
       </nav>
 
     </div>
