@@ -212,7 +212,7 @@ const Tasks = () => {
       </div>
 
       {/* --- INPUT --- */}
-      <div className="fixed bottom-16 left-0 right-0 md:left-64 p-4 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md border-t border-gray-200 dark:border-gray-700 z-10">
+      <div className="fixed bottom-16 md:bottom-0 left-0 right-0 md:left-[var(--sidebar-width)] p-4 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md border-t border-gray-200 dark:border-gray-700 z-10 transition-[left] duration-300 ease-in-out">
         <form onSubmit={addTask} className="max-w-3xl mx-auto flex gap-2">
           <input
             type="text"
