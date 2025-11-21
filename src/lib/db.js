@@ -6,8 +6,9 @@ export const db = new Dexie('CDSTrackerDB');
 db.version(1).stores({
   subjects: '++id, name, color',
   subtopics: '++id, subjectId, title', 
-  progress: '++id, subtopicId, subjectId', // compound index handled in logic
+  progress: '++id, subtopicId, subjectId', 
   sessions: '++id, subjectId, subtopicId, startTime, endTime, durationSeconds',
+  tasks: '++id, date, title, isCompleted', // <--- ADD THIS LINE ONLY
   settings: 'key'
 });
 
