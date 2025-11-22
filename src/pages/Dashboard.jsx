@@ -7,7 +7,6 @@ import {
   eachDayOfInterval, subMonths, addMonths, isSameMonth 
 } from 'date-fns';
 import { Download, Upload, Flame, Clock, BookOpen, ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
-import CloudSync from '../components/CloudSync';
 
 const Dashboard = () => {
   const sessions = useLiveQuery(() => db.sessions.toArray()) || [];
@@ -41,7 +40,6 @@ const Dashboard = () => {
   // Streak Logic
   const calculateStreak = () => {
     if (!sessions.length) return 0;
-    // Simple streak logic based on unique days present in sessions
     const daysMap = new Set(sessions.map(s => format(new Date(s.startTime), 'yyyy-MM-dd')));
     let streak = 0;
     let checkDate = new Date();
@@ -62,19 +60,16 @@ const Dashboard = () => {
   };
 
   // --- CHART DATA GENERATION ---
-  
-  // 1. Weekly Data (Last 7 Days)
   const weeklyData = Array.from({ length: 7 }, (_, i) => {
     const d = subDays(new Date(), 6 - i);
     const daySessions = sessions.filter(s => isSameDay(new Date(s.startTime), d));
     return {
-      name: format(d, 'EEE'), // Mon, Tue
+      name: format(d, 'EEE'),
       fullDate: format(d, 'MMM d'),
       minutes: Math.round(daySessions.reduce((acc, s) => acc + s.durationSeconds, 0) / 60)
     };
   });
 
-  // 2. Monthly Data (For Explore Mode)
   const getMonthlyData = () => {
     const start = startOfMonth(exploreMonth);
     const end = endOfMonth(exploreMonth);
@@ -83,7 +78,7 @@ const Dashboard = () => {
     return days.map(day => {
       const daySessions = sessions.filter(s => isSameDay(new Date(s.startTime), day));
       return {
-        name: format(day, 'd'), // 1, 2, 3...
+        name: format(day, 'd'),
         fullDate: format(day, 'MMM d'),
         minutes: Math.round(daySessions.reduce((acc, s) => acc + s.durationSeconds, 0) / 60)
       };
@@ -91,7 +86,6 @@ const Dashboard = () => {
   };
 
   const chartData = chartView === 'weekly' ? weeklyData : getMonthlyData();
-
   const fileInputRef = React.useRef();
 
   return (
@@ -119,7 +113,6 @@ const Dashboard = () => {
           <div className="flex justify-between items-start">
             <div>
               <p className="text-sm text-gray-500 uppercase font-semibold">Total Study Time</p>
-              {/* UPDATED: Shows Hrs & Mins */}
               <h3 className="text-2xl font-bold mt-1 text-army-700 dark:text-white">{totalTimeDisplay}</h3>
             </div>
             <div className="p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg text-blue-600">
@@ -127,7 +120,6 @@ const Dashboard = () => {
             </div>
           </div>
           <div className="mt-4 text-sm text-gray-500">
-             {/* UPDATED: Shows Hrs & Mins */}
             <span className="text-green-500 font-medium">{formatDuration(todayMinutes)}</span> today
           </div>
         </div>
@@ -169,10 +161,9 @@ const Dashboard = () => {
       {/* Charts & Activity Area */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
-        {/* --- CHART SECTION (Takes 2 Columns) --- */}
+        {/* --- CHART SECTION --- */}
         <div className="lg:col-span-2 bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 h-80 flex flex-col">
           
-          {/* Chart Header with Exploration Controls */}
           <div className="flex justify-between items-center mb-4">
             {chartView === 'weekly' ? (
                <h3 className="font-bold text-gray-800 dark:text-gray-200">Last 7 Days</h3>
@@ -190,12 +181,11 @@ const Dashboard = () => {
                </div>
             )}
 
-            {/* Toggle Button */}
             <button 
                 onClick={() => {
                     if (chartView === 'weekly') {
                         setChartView('monthly');
-                        setExploreMonth(new Date()); // Reset to current month when entering explore
+                        setExploreMonth(new Date());
                     } else {
                         setChartView('weekly');
                     }
@@ -210,7 +200,6 @@ const Dashboard = () => {
             </button>
           </div>
 
-          {/* The Chart */}
           <div className="flex-1 w-full min-w-0">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={chartData}>
@@ -219,11 +208,11 @@ const Dashboard = () => {
                     tick={{fontSize: 10}} 
                     axisLine={false} 
                     tickLine={false} 
-                    interval={chartView === 'monthly' ? 2 : 0} // Skip ticks in monthly view to fit
+                    interval={chartView === 'monthly' ? 2 : 0} 
                 />
                 <Tooltip 
                   cursor={{fill: 'transparent'}}
-                  content={({ active, payload, label }) => {
+                  content={({ active, payload }) => {
                     if (active && payload && payload.length) {
                         const data = payload[0].payload;
                         return (
@@ -242,13 +231,9 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* --- RIGHT COLUMN: Sync & Recent Activity (Takes 1 Column) --- */}
+        {/* --- RIGHT COLUMN: Recent Activity ONLY --- */}
         <div className="space-y-6 h-full flex flex-col">
             
-            {/* Cloud Sync Widget */}
-            <CloudSync />
-
-            {/* Recent Activity Log */}
             <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 flex-1 overflow-hidden flex flex-col">
                 <h3 className="font-semibold mb-4 flex-shrink-0">Recent Sessions</h3>
                 <div className="overflow-y-auto flex-1 space-y-3 pr-1 custom-scrollbar">
@@ -262,7 +247,6 @@ const Dashboard = () => {
                                 {format(new Date(session.startTime), 'MMM d, h:mm a')}
                             </div>
                         </div>
-                        {/* UPDATED: Shows formatted time */}
                         <div className="font-mono font-semibold text-army-500 whitespace-nowrap ml-2">
                             {Math.round(session.durationSeconds / 60) < 60 
                                 ? `${Math.round(session.durationSeconds / 60)}m`
