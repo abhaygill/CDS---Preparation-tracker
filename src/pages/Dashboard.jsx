@@ -53,7 +53,7 @@ const Dashboard = () => {
     return streak;
   };
 
-  // --- CHART DATA & SCALE LOGIC ---
+  // --- CHART DATA ---
   const weeklyData = Array.from({ length: 7 }, (_, i) => {
     const d = subDays(new Date(), 6 - i);
     const daySessions = sessions.filter(s => isSameDay(new Date(s.startTime), d));
@@ -80,15 +80,18 @@ const Dashboard = () => {
 
   const chartData = chartView === 'weekly' ? weeklyData : getMonthlyData();
 
-  // --- CALCULATE Y-AXIS TICKS (Hours Only) ---
-  const maxMinutes = Math.max(...chartData.map(d => d.minutes));
-  // Find next biggest hour (e.g., if max is 130mins, maxHour is 3 hours)
-  // We use Math.max(1, ...) to ensure we at least show '1' even if data is empty
-  const maxHours = Math.max(1, Math.ceil(maxMinutes / 60));
+  // --- EXACT EQUIDISTANT SCALE LOGIC ---
+  // 1. Get the highest bar in the current view
+  const maxMinutes = Math.max(0, ...chartData.map(d => d.minutes));
   
-  // Generate ticks: [0, 60, 120, 180...]
+  // 2. Calculate the "Ceiling Hour". 
+  // If max is 0, default to 1 hour. If max is 130mins, ceiling is 3 hours (180 mins).
+  const maxHourCap = Math.max(1, Math.ceil(maxMinutes / 60));
+  const maxDomainValue = maxHourCap * 60; 
+
+  // 3. Create explicit ticks: [0, 60, 120, 180...]
   const yAxisTicks = [];
-  for (let i = 0; i <= maxHours; i++) {
+  for (let i = 0; i <= maxHourCap; i++) {
     yAxisTicks.push(i * 60);
   }
 
@@ -201,14 +204,15 @@ const Dashboard = () => {
                     tickLine={false} 
                     interval={chartView === 'monthly' ? 2 : 0} 
                 />
-                {/* CUSTOM Y-AXIS FOR HOURS 1, 2, 3, 4 */}
                 <YAxis 
+                    type="number" 
+                    domain={[0, maxDomainValue]} // <--- FORCES GRAPH TO END EXACTLY AT MAX HOUR
                     tick={{fontSize: 10}} 
                     axisLine={false} 
                     tickLine={false}
-                    ticks={yAxisTicks} // Forces specific ticks [0, 60, 120...]
-                    tickFormatter={(val) => val === 0 ? '0' : `${val / 60}`} // Divides 120/60 -> 2
-                    domain={[0, 'auto']}
+                    ticks={yAxisTicks} // <--- FORCES EQUIDISTANT TICKS [0, 60, 120...]
+                    tickFormatter={(val) => val === 0 ? '0' : `${val / 60}`} 
+                    interval={0} // Show all calculated ticks
                 />
                 <Tooltip 
                   cursor={{fill: 'transparent'}}
