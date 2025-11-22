@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, exportData, importData } from '../lib/db';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { 
   format, subDays, isSameDay, startOfMonth, endOfMonth, 
-  eachDayOfInterval, subMonths, addMonths, isSameMonth 
+  eachDayOfInterval, subMonths, addMonths 
 } from 'date-fns';
 import { Download, Upload, Flame, Clock, BookOpen, ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
 
@@ -17,13 +17,20 @@ const Dashboard = () => {
   const [chartView, setChartView] = useState('weekly'); // 'weekly' or 'monthly'
   const [exploreMonth, setExploreMonth] = useState(new Date());
 
-  // --- HELPER: Format Minutes to "X Hrs Y Mins" ---
+  // --- HELPER: Format Minutes to "2 Hrs 15 Mins" ---
   const formatDuration = (totalMinutes) => {
     const hrs = Math.floor(totalMinutes / 60);
     const mins = totalMinutes % 60;
-    if (hrs > 0 && mins > 0) return `${hrs} Hrs ${mins} Mins`;
-    if (hrs > 0) return `${hrs} Hrs`;
-    return `${mins} Mins`;
+    if (hrs > 0 && mins > 0) return `${hrs}Hrs ${mins}Mins`;
+    if (hrs > 0) return `${hrs}Hrs`;
+    return `${mins}Mins`;
+  };
+
+  // --- HELPER: Format Axis (e.g., 120 -> 2h) ---
+  const formatAxis = (minutes) => {
+    if (minutes === 0) return '0';
+    if (minutes >= 60) return `${(minutes / 60).toFixed(1)}h`;
+    return `${minutes}m`;
   };
 
   // --- ANALYTICS LOGIC ---
@@ -31,7 +38,7 @@ const Dashboard = () => {
   // Total All Time (formatted)
   const totalHrs = Math.floor(totalSeconds / 3600);
   const totalMins = Math.floor((totalSeconds % 3600) / 60);
-  const totalTimeDisplay = totalHrs > 0 ? `${totalHrs} Hrs ${totalMins} Mins` : `${totalMins} Mins`;
+  const totalTimeDisplay = totalHrs > 0 ? `${totalHrs}Hrs ${totalMins}Mins` : `${totalMins}Mins`;
   
   // Today's Time
   const todaySessions = sessions.filter(s => isSameDay(new Date(s.startTime), new Date()));
@@ -202,13 +209,20 @@ const Dashboard = () => {
 
           <div className="flex-1 w-full min-w-0">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={chartData}>
+              <BarChart data={chartData} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.2} />
                 <XAxis 
                     dataKey="name" 
                     tick={{fontSize: 10}} 
                     axisLine={false} 
                     tickLine={false} 
                     interval={chartView === 'monthly' ? 2 : 0} 
+                />
+                <YAxis 
+                    tick={{fontSize: 10}} 
+                    axisLine={false} 
+                    tickLine={false}
+                    tickFormatter={formatAxis} // Shows 1h, 2h, etc.
                 />
                 <Tooltip 
                   cursor={{fill: 'transparent'}}
@@ -231,7 +245,7 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* --- RIGHT COLUMN: Recent Activity ONLY --- */}
+        {/* --- RIGHT COLUMN: Recent Activity --- */}
         <div className="space-y-6 h-full flex flex-col">
             
             <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 flex-1 overflow-hidden flex flex-col">
