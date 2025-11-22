@@ -13,51 +13,38 @@ const Dashboard = () => {
   const subtopics = useLiveQuery(() => db.subtopics.toArray());
   const progress = useLiveQuery(() => db.progress.toArray());
 
-  // --- State for Chart Exploration ---
-  const [chartView, setChartView] = useState('weekly'); // 'weekly' or 'monthly'
+  const [chartView, setChartView] = useState('weekly'); 
   const [exploreMonth, setExploreMonth] = useState(new Date());
 
-  // --- HELPER: Format Minutes to "2 Hrs 15 Mins" ---
+  // --- HELPERS ---
   const formatDuration = (totalMinutes) => {
     const hrs = Math.floor(totalMinutes / 60);
     const mins = totalMinutes % 60;
-    if (hrs > 0 && mins > 0) return `${hrs}Hrs ${mins}Mins`;
-    if (hrs > 0) return `${hrs}Hrs`;
-    return `${mins}Mins`;
+    if (hrs > 0 && mins > 0) return `${hrs} Hrs ${mins} Mins`;
+    if (hrs > 0) return `${hrs} Hrs`;
+    return `${mins} Mins`;
   };
 
-  // --- HELPER: Format Axis (e.g., 120 -> 2h) ---
-  const formatAxis = (minutes) => {
-    if (minutes === 0) return '0';
-    if (minutes >= 60) return `${(minutes / 60).toFixed(1)}h`;
-    return `${minutes}m`;
-  };
-
-  // --- ANALYTICS LOGIC ---
+  // --- ANALYTICS ---
   const totalSeconds = sessions.reduce((acc, s) => acc + s.durationSeconds, 0);
-  // Total All Time (formatted)
   const totalHrs = Math.floor(totalSeconds / 3600);
   const totalMins = Math.floor((totalSeconds % 3600) / 60);
-  const totalTimeDisplay = totalHrs > 0 ? `${totalHrs}Hrs ${totalMins}Mins` : `${totalMins}Mins`;
+  const totalTimeDisplay = totalHrs > 0 ? `${totalHrs} Hrs ${totalMins} Mins` : `${totalMins} Mins`;
   
-  // Today's Time
   const todaySessions = sessions.filter(s => isSameDay(new Date(s.startTime), new Date()));
   const todayMinutes = Math.round(todaySessions.reduce((acc, s) => acc + s.durationSeconds, 0) / 60);
 
-  // Streak Logic
   const calculateStreak = () => {
     if (!sessions.length) return 0;
     const daysMap = new Set(sessions.map(s => format(new Date(s.startTime), 'yyyy-MM-dd')));
     let streak = 0;
     let checkDate = new Date();
-    
     if (daysMap.has(format(checkDate, 'yyyy-MM-dd'))) streak++;
     else {
         checkDate = subDays(checkDate, 1);
         if (!daysMap.has(format(checkDate, 'yyyy-MM-dd'))) return 0;
         streak++;
     }
-
     while (true) {
         checkDate = subDays(checkDate, 1);
         if (daysMap.has(format(checkDate, 'yyyy-MM-dd'))) streak++;
@@ -66,7 +53,7 @@ const Dashboard = () => {
     return streak;
   };
 
-  // --- CHART DATA GENERATION ---
+  // --- CHART DATA & SCALE LOGIC ---
   const weeklyData = Array.from({ length: 7 }, (_, i) => {
     const d = subDays(new Date(), 6 - i);
     const daySessions = sessions.filter(s => isSameDay(new Date(s.startTime), d));
@@ -81,7 +68,6 @@ const Dashboard = () => {
     const start = startOfMonth(exploreMonth);
     const end = endOfMonth(exploreMonth);
     const days = eachDayOfInterval({ start, end });
-
     return days.map(day => {
       const daySessions = sessions.filter(s => isSameDay(new Date(s.startTime), day));
       return {
@@ -93,6 +79,19 @@ const Dashboard = () => {
   };
 
   const chartData = chartView === 'weekly' ? weeklyData : getMonthlyData();
+
+  // --- CALCULATE Y-AXIS TICKS (Hours Only) ---
+  const maxMinutes = Math.max(...chartData.map(d => d.minutes));
+  // Find next biggest hour (e.g., if max is 130mins, maxHour is 3 hours)
+  // We use Math.max(1, ...) to ensure we at least show '1' even if data is empty
+  const maxHours = Math.max(1, Math.ceil(maxMinutes / 60));
+  
+  // Generate ticks: [0, 60, 120, 180...]
+  const yAxisTicks = [];
+  for (let i = 0; i <= maxHours; i++) {
+    yAxisTicks.push(i * 60);
+  }
+
   const fileInputRef = React.useRef();
 
   return (
@@ -165,51 +164,35 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* Charts & Activity Area */}
+      {/* Charts Area */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
         {/* --- CHART SECTION --- */}
         <div className="lg:col-span-2 bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 h-80 flex flex-col">
-          
           <div className="flex justify-between items-center mb-4">
             {chartView === 'weekly' ? (
                <h3 className="font-bold text-gray-800 dark:text-gray-200">Last 7 Days</h3>
             ) : (
                <div className="flex items-center gap-2">
-                  <button onClick={() => setExploreMonth(subMonths(exploreMonth, 1))} className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded">
-                      <ChevronLeft size={16} />
-                  </button>
-                  <span className="font-bold text-army-600 dark:text-army-400 min-w-[100px] text-center">
-                      {format(exploreMonth, 'MMM yyyy')}
-                  </span>
-                  <button onClick={() => setExploreMonth(addMonths(exploreMonth, 1))} className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded">
-                      <ChevronRight size={16} />
-                  </button>
+                  <button onClick={() => setExploreMonth(subMonths(exploreMonth, 1))} className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"><ChevronLeft size={16} /></button>
+                  <span className="font-bold text-army-600 dark:text-army-400 min-w-[100px] text-center">{format(exploreMonth, 'MMM yyyy')}</span>
+                  <button onClick={() => setExploreMonth(addMonths(exploreMonth, 1))} className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"><ChevronRight size={16} /></button>
                </div>
             )}
-
             <button 
                 onClick={() => {
-                    if (chartView === 'weekly') {
-                        setChartView('monthly');
-                        setExploreMonth(new Date());
-                    } else {
-                        setChartView('weekly');
-                    }
+                    if (chartView === 'weekly') { setChartView('monthly'); setExploreMonth(new Date()); } 
+                    else { setChartView('weekly'); }
                 }}
                 className="text-xs font-bold text-army-500 hover:bg-army-50 dark:hover:bg-gray-700 px-3 py-1.5 rounded border border-army-200 dark:border-gray-600 transition-colors flex items-center gap-1"
             >
-                {chartView === 'weekly' ? (
-                    <>Explore <Calendar size={12}/></>
-                ) : (
-                    'Back to Weekly'
-                )}
+                {chartView === 'weekly' ? <>Explore <Calendar size={12}/></> : 'Back to Weekly'}
             </button>
           </div>
 
           <div className="flex-1 w-full min-w-0">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={chartData} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
+              <BarChart data={chartData} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.2} />
                 <XAxis 
                     dataKey="name" 
@@ -218,11 +201,14 @@ const Dashboard = () => {
                     tickLine={false} 
                     interval={chartView === 'monthly' ? 2 : 0} 
                 />
+                {/* CUSTOM Y-AXIS FOR HOURS 1, 2, 3, 4 */}
                 <YAxis 
                     tick={{fontSize: 10}} 
                     axisLine={false} 
                     tickLine={false}
-                    tickFormatter={formatAxis} // Shows 1h, 2h, etc.
+                    ticks={yAxisTicks} // Forces specific ticks [0, 60, 120...]
+                    tickFormatter={(val) => val === 0 ? '0' : `${val / 60}`} // Divides 120/60 -> 2
+                    domain={[0, 'auto']}
                 />
                 <Tooltip 
                   cursor={{fill: 'transparent'}}
@@ -245,9 +231,8 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* --- RIGHT COLUMN: Recent Activity --- */}
+        {/* Recent Activity */}
         <div className="space-y-6 h-full flex flex-col">
-            
             <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 flex-1 overflow-hidden flex flex-col">
                 <h3 className="font-semibold mb-4 flex-shrink-0">Recent Sessions</h3>
                 <div className="overflow-y-auto flex-1 space-y-3 pr-1 custom-scrollbar">
