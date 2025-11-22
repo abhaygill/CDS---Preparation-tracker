@@ -8,12 +8,14 @@ import {
 } from 'date-fns';
 import { 
   Plus, Trash2, CheckCircle, Circle, Calendar as CalendarIcon, 
-  AlertTriangle, Trophy, ChevronLeft, ChevronRight, MapPin 
+  AlertTriangle, Trophy, ChevronLeft, ChevronRight, MapPin, X 
 } from 'lucide-react';
 
 const Tasks = () => {
+  // Default to Today
   const [selectedDate, setSelectedDate] = useState(new Date());
-  const [currentMonth, setCurrentMonth] = useState(new Date()); // Controls which month is visible
+  const [currentMonth, setCurrentMonth] = useState(new Date()); 
+  const [showCalendar, setShowCalendar] = useState(false); // Hidden by default
   const [newTask, setNewTask] = useState('');
   
   // Alert States
@@ -23,15 +25,11 @@ const Tasks = () => {
   // --- DATABASE QUERIES ---
   const formattedDate = format(selectedDate, 'yyyy-MM-dd');
   
-  // 1. Get tasks for selected date
   const tasksForDay = useLiveQuery(
     () => db.tasks.where('date').equals(formattedDate).toArray(),
     [formattedDate]
   );
 
-  // 2. Get ALL tasks to:
-  //    a) Check overdue
-  //    b) Show dots on calendar for days with tasks
   const allTasks = useLiveQuery(() => db.tasks.toArray());
 
   // --- CALENDAR GENERATION LOGIC ---
@@ -41,52 +39,42 @@ const Tasks = () => {
     const startDate = startOfWeek(monthStart);
     const endDate = endOfWeek(monthEnd);
 
-    const dateFormat = "d";
     const rows = [];
     let days = [];
     let day = startDate;
-    let formattedDate = "";
 
     while (day <= endDate) {
       for (let i = 0; i < 7; i++) {
-        formattedDate = format(day, dateFormat);
         const cloneDay = day;
-        
-        // Check if this day has tasks (for the dot indicator)
         const dayString = format(day, 'yyyy-MM-dd');
+        
+        // Dots Logic
         const hasTasks = allTasks?.some(t => t.date === dayString && !t.isCompleted);
         const isCompletedDay = allTasks?.some(t => t.date === dayString && t.isCompleted) && !hasTasks;
-
         const isSelected = isSameDay(day, selectedDate);
-        const isToday = isSameDay(day, new Date());
         const isCurrentMonth = isSameMonth(day, monthStart);
+        const isToday = isSameDay(day, new Date());
 
         days.push(
           <div
             key={day.toString()}
-            className={`relative h-14 w-full flex flex-col items-center justify-center cursor-pointer rounded-lg transition-all duration-200
+            className={`relative h-10 w-full flex items-center justify-center cursor-pointer rounded-full transition-all duration-200
               ${!isCurrentMonth ? 'text-gray-300 dark:text-gray-600' : 'text-gray-700 dark:text-gray-200'}
-              ${isSelected ? 'bg-army-500 text-white shadow-lg transform scale-105 font-bold' : 'hover:bg-gray-100 dark:hover:bg-gray-800'}
+              ${isSelected ? 'bg-army-500 text-white font-bold shadow-md' : 'hover:bg-gray-100 dark:hover:bg-gray-700'}
               ${isToday && !isSelected ? 'border border-army-500 text-army-500' : ''}
             `}
             onClick={() => {
                 setSelectedDate(cloneDay);
-                // If user clicks a date in next/prev month, switch view to that month
-                if(!isSameMonth(cloneDay, currentMonth)) {
-                    setCurrentMonth(cloneDay);
-                }
+                setShowCalendar(false); // Close calendar after selection
+                if(!isSameMonth(cloneDay, currentMonth)) setCurrentMonth(cloneDay);
             }}
           >
-            <span className="text-sm">{formattedDate}</span>
+            <span className="text-sm">{format(day, 'd')}</span>
             
-            {/* DOT INDICATORS */}
-            <div className="flex gap-0.5 mt-1 h-1.5">
-                {hasTasks && (
-                    <div className={`w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-white' : 'bg-red-500'}`}></div>
-                )}
-                {isCompletedDay && (
-                    <div className={`w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-white/70' : 'bg-green-500'}`}></div>
-                )}
+            {/* Tiny Dots */}
+            <div className="absolute bottom-1 flex gap-0.5">
+                {hasTasks && <div className={`w-1 h-1 rounded-full ${isSelected ? 'bg-white' : 'bg-red-500'}`}></div>}
+                {isCompletedDay && <div className={`w-1 h-1 rounded-full ${isSelected ? 'bg-white/70' : 'bg-green-500'}`}></div>}
             </div>
           </div>
         );
@@ -99,35 +87,10 @@ const Tasks = () => {
       );
       days = [];
     }
-    return <div className="mb-4">{rows}</div>;
+    return <div>{rows}</div>;
   };
 
-  const nextMonth = () => setCurrentMonth(addMonths(currentMonth, 1));
-  const prevMonth = () => setCurrentMonth(subMonths(currentMonth, 1));
-  const jumpToToday = () => {
-      const today = new Date();
-      setSelectedDate(today);
-      setCurrentMonth(today);
-  }
-
-  // --- REMINDER & ACTIONS LOGIC (Same as before) ---
-  useEffect(() => {
-    const checkPending = () => {
-      if (!allTasks) return;
-      const today = startOfDay(new Date());
-      const overdue = allTasks.filter(t => {
-        const tDate = parseISO(t.date);
-        return isBefore(tDate, today) && !t.isCompleted;
-      });
-      if (overdue.length > 0) {
-        setPendingAlert(`Warning: You have ${overdue.length} pending tasks from previous days.`);
-      }
-    };
-    checkPending();
-    const interval = setInterval(checkPending, 30 * 60 * 1000);
-    return () => clearInterval(interval);
-  }, [allTasks]);
-
+  // --- ACTIONS ---
   const addTask = async (e) => {
     e.preventDefault();
     if (!newTask.trim()) return;
@@ -141,9 +104,9 @@ const Tasks = () => {
     if (newStatus) {
       const pending = tasksForDay.filter(t => !t.isCompleted && t.id !== task.id);
       if (pending.length === 0 && tasksForDay.length > 0) {
-        setAppreciationMsg({ text: "Mission Accomplished! Day Cleared. 🇮🇳", type: "grand" });
+        setAppreciationMsg({ text: "Day Cleared! Outstanding.", type: "grand" });
       } else {
-        setAppreciationMsg({ text: "Shabash! Target Neutralized.", type: "simple" });
+        setAppreciationMsg({ text: "Good kill.", type: "simple" });
       }
       setTimeout(() => setAppreciationMsg(null), 3000);
     }
@@ -153,11 +116,24 @@ const Tasks = () => {
     if (confirm('Delete this task?')) await db.tasks.delete(id);
   };
 
+  // --- REMINDERS ---
+  useEffect(() => {
+    const checkPending = () => {
+      if (!allTasks) return;
+      const today = startOfDay(new Date());
+      const overdue = allTasks.filter(t => {
+        return isBefore(parseISO(t.date), today) && !t.isCompleted;
+      });
+      if (overdue.length > 0) setPendingAlert(overdue.length);
+    };
+    checkPending();
+  }, [allTasks]);
+
 
   return (
-    <div className="pb-32 relative max-w-4xl mx-auto">
+    <div className="pb-32 relative max-w-2xl mx-auto">
 
-      {/* POPUPS (Appreciation & Warning) */}
+      {/* --- POPUPS --- */}
       {appreciationMsg && (
         <div className={`fixed top-20 left-1/2 transform -translate-x-1/2 z-50 px-6 py-3 rounded-full shadow-xl flex items-center gap-2 font-bold animate-bounce ${
           appreciationMsg.type === 'grand' ? 'bg-yellow-500 text-black' : 'bg-green-600 text-white'
@@ -166,99 +142,101 @@ const Tasks = () => {
           {appreciationMsg.text}
         </div>
       )}
-
+      
       {pendingAlert && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-           <div className="bg-white dark:bg-gray-900 p-6 rounded-xl max-w-sm w-full border-2 border-red-500 shadow-2xl text-center space-y-4">
-              <div className="flex justify-center text-red-500"><AlertTriangle size={48} /></div>
-              <h3 className="text-xl font-bold text-red-600">Overdue Warning!</h3>
-              <p className="text-gray-700 dark:text-gray-300">{pendingAlert}</p>
-              <button onClick={() => setPendingAlert(null)} className="w-full py-2 bg-red-600 text-white rounded-lg font-bold hover:bg-red-700">
-                Roger that, I will complete them.
-              </button>
-           </div>
+        <div className="fixed top-4 right-4 z-40 bg-red-100 text-red-600 px-4 py-2 rounded-lg text-xs font-bold border border-red-200 flex items-center gap-2 shadow-sm">
+            <AlertTriangle size={14} /> {pendingAlert} overdue tasks
         </div>
       )}
 
-      {/* --- CALENDAR HEADER --- */}
-      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-4 mb-6">
-        <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                <CalendarIcon className="text-army-500" size={24}/>
-                {format(currentMonth, 'MMMM yyyy')}
+      {/* --- HEADER --- */}
+      <div className="flex justify-between items-end mb-6 pt-2">
+        <div>
+            {/* BIG DATE DISPLAY */}
+            <h1 className="text-5xl font-bold text-army-500 tracking-tighter">
+                {format(selectedDate, 'd')}
+            </h1>
+            <h2 className="text-xl font-medium text-gray-600 dark:text-gray-300 uppercase tracking-wide">
+                {format(selectedDate, 'MMMM, EEEE')}
             </h2>
-            <div className="flex gap-1">
-                <button onClick={jumpToToday} className="p-2 text-xs font-bold text-army-500 hover:bg-army-50 dark:hover:bg-gray-700 rounded-lg mr-2 border border-army-200">
-                    TODAY
-                </button>
-                <button onClick={prevMonth} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full">
-                    <ChevronLeft size={20}/>
-                </button>
-                <button onClick={nextMonth} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full">
-                    <ChevronRight size={20}/>
+            {isSameDay(selectedDate, new Date()) && (
+                <span className="inline-block mt-1 px-2 py-0.5 bg-army-100 dark:bg-army-900/30 text-army-600 text-[10px] font-bold rounded uppercase">
+                    Today
+                </span>
+            )}
+        </div>
+
+        <button 
+            onClick={() => setShowCalendar(!showCalendar)}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium transition-all shadow-sm border
+                ${showCalendar 
+                    ? 'bg-gray-100 text-gray-600 border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700' 
+                    : 'bg-army-500 text-white border-army-500 hover:bg-army-600'
+                }`}
+        >
+            {showCalendar ? <X size={18}/> : <CalendarIcon size={18} />}
+            {showCalendar ? 'Close' : 'Calendar'}
+        </button>
+      </div>
+
+      {/* --- EXPANDABLE CALENDAR --- */}
+      {showCalendar && (
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 p-4 mb-6 animate-in slide-in-from-top-2 duration-200">
+            <div className="flex items-center justify-between mb-4">
+                <button onClick={() => setCurrentMonth(subMonths(currentMonth, 1))} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full"><ChevronLeft size={20}/></button>
+                <span className="font-bold text-gray-700 dark:text-gray-200">{format(currentMonth, 'MMMM yyyy')}</span>
+                <button onClick={() => setCurrentMonth(addMonths(currentMonth, 1))} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full"><ChevronRight size={20}/></button>
+            </div>
+            
+            <div className="grid grid-cols-7 mb-2">
+                {['S','M','T','W','T','F','S'].map(d => <div key={d} className="text-center text-xs text-gray-400 font-bold">{d}</div>)}
+            </div>
+            
+            {renderCalendar()}
+            
+            <div className="mt-4 pt-3 border-t border-gray-100 dark:border-gray-700 flex justify-center">
+                <button onClick={() => { setSelectedDate(new Date()); setCurrentMonth(new Date()); setShowCalendar(false); }} className="text-xs font-bold text-army-500 hover:underline">
+                    Jump to Today
                 </button>
             </div>
         </div>
-
-        {/* WEEKDAY NAMES */}
-        <div className="grid grid-cols-7 mb-2">
-            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-                <div key={day} className="text-center text-xs font-bold text-gray-400 uppercase tracking-wider">
-                    {day}
-                </div>
-            ))}
-        </div>
-
-        {/* CALENDAR GRID */}
-        {renderCalendar()}
-      </div>
-
-      {/* --- SELECTED DAY HEADER --- */}
-      <div className="flex justify-between items-end mb-4 px-2">
-        <div>
-          <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
-            {isSameDay(selectedDate, new Date()) ? 'Today\'s Targets' : format(selectedDate, 'EEEE, MMM do')}
-          </h3>
-          <p className="text-xs text-gray-500 mt-1">
-            {tasksForDay?.filter(t => t.isCompleted).length || 0} / {tasksForDay?.length || 0} Completed
-          </p>
-        </div>
-      </div>
+      )}
 
       {/* --- TASK LIST --- */}
-      <div className="space-y-3 mb-20 px-1">
+      <div className="space-y-3 mb-24">
         {tasksForDay?.length === 0 && (
-          <div className="text-center py-12 text-gray-400 bg-gray-50 dark:bg-gray-800/50 rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-700">
-            <div className="flex justify-center mb-2 opacity-50"><MapPin size={32}/></div>
-            <p className="font-medium">No missions assigned.</p>
-            <p className="text-xs mt-1">Add a target for this date below.</p>
+          <div className="flex flex-col items-center justify-center py-12 text-gray-400 bg-gray-50/50 dark:bg-gray-800/30 rounded-2xl border-2 border-dashed border-gray-200 dark:border-gray-700">
+            <div className="bg-gray-100 dark:bg-gray-800 p-3 rounded-full mb-3">
+                <MapPin size={24} className="opacity-50"/>
+            </div>
+            <p className="font-medium text-sm">No operations planned.</p>
           </div>
         )}
 
         {tasksForDay?.map(task => (
           <div 
             key={task.id}
-            className={`group flex items-center justify-between p-4 rounded-xl border transition-all duration-200 ${
+            className={`group flex items-center justify-between p-4 rounded-xl border transition-all duration-300 ${
               task.isCompleted 
-                ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-900/50 opacity-75' 
-                : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md'
+                ? 'bg-gray-50 dark:bg-gray-900/50 border-gray-100 dark:border-gray-800 opacity-60' 
+                : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md hover:border-army-200'
             }`}
           >
             <div 
               className="flex items-center gap-4 flex-1 cursor-pointer select-none" 
               onClick={() => toggleTask(task)}
             >
-              <div className={`p-1 rounded-full transition-colors ${task.isCompleted ? 'text-green-500' : 'text-gray-300 group-hover:text-army-500'}`}>
-                 {task.isCompleted ? <CheckCircle size={24} className="fill-current" /> : <Circle size={24} />}
+              <div className={`transform transition-transform active:scale-90 ${task.isCompleted ? 'text-green-500' : 'text-gray-300 group-hover:text-army-500'}`}>
+                 {task.isCompleted ? <CheckCircle size={26} className="fill-current" /> : <Circle size={26} strokeWidth={1.5} />}
               </div>
-              <span className={`font-medium transition-all ${task.isCompleted ? 'line-through text-gray-500' : 'text-gray-900 dark:text-white'}`}>
+              <span className={`font-medium text-base transition-all ${task.isCompleted ? 'line-through text-gray-400' : 'text-gray-800 dark:text-gray-100'}`}>
                 {task.title}
               </span>
             </div>
             
             <button 
               onClick={() => deleteTask(task.id)}
-              className="p-2 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+              className="p-2 text-gray-300 hover:text-red-500 transition-colors"
             >
               <Trash2 size={18} />
             </button>
@@ -266,20 +244,20 @@ const Tasks = () => {
         ))}
       </div>
 
-      {/* --- INPUT --- */}
-      <div className="fixed bottom-16 md:bottom-0 left-0 right-0 md:left-[var(--sidebar-width)] p-4 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md border-t border-gray-200 dark:border-gray-700 z-10 transition-[left] duration-300 ease-in-out">
-        <form onSubmit={addTask} className="max-w-3xl mx-auto flex gap-2 shadow-lg rounded-xl">
+      {/* --- ADD INPUT --- */}
+      <div className="fixed bottom-16 md:bottom-0 left-0 right-0 md:left-[var(--sidebar-width)] p-4 bg-white/90 dark:bg-gray-900/90 backdrop-blur-xl border-t border-gray-200 dark:border-gray-700 z-10 transition-[left] duration-300">
+        <form onSubmit={addTask} className="max-w-2xl mx-auto flex gap-3">
           <input
             type="text"
             value={newTask}
             onChange={(e) => setNewTask(e.target.value)}
-            placeholder={`Add task for ${format(selectedDate, 'MMM do')}...`}
-            className="flex-1 p-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-army-500"
+            placeholder="New mission objective..."
+            className="flex-1 px-4 py-3.5 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-army-500 shadow-sm"
           />
           <button 
             type="submit"
             disabled={!newTask.trim()}
-            className="bg-army-500 hover:bg-army-700 text-white px-5 rounded-xl disabled:opacity-50 transition active:scale-95"
+            className="bg-army-500 hover:bg-army-600 text-white px-5 rounded-xl disabled:opacity-50 transition active:scale-95 shadow-lg shadow-army-500/20"
           >
             <Plus size={24} />
           </button>
