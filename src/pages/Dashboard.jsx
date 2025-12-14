@@ -4,9 +4,12 @@ import { db, exportData, importData } from '../lib/db';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { 
   format, subDays, isSameDay, startOfMonth, endOfMonth, 
-  eachDayOfInterval, subMonths, addMonths 
+  eachDayOfInterval, subMonths, addMonths, parseISO, differenceInCalendarDays 
 } from 'date-fns';
-import { Download, Upload, Flame, Clock, BookOpen, ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
+import { 
+  Download, Upload, Flame, Clock, BookOpen, ChevronLeft, ChevronRight, 
+  Calendar, Trophy 
+} from 'lucide-react';
 
 const Dashboard = () => {
   const sessions = useLiveQuery(() => db.sessions.toArray()) || [];
@@ -34,23 +37,58 @@ const Dashboard = () => {
   const todaySessions = sessions.filter(s => isSameDay(new Date(s.startTime), new Date()));
   const todayMinutes = Math.round(todaySessions.reduce((acc, s) => acc + s.durationSeconds, 0) / 60);
 
-  const calculateStreak = () => {
-    if (!sessions.length) return 0;
-    const daysMap = new Set(sessions.map(s => format(new Date(s.startTime), 'yyyy-MM-dd')));
+  // --- STREAK LOGIC (Current & Highest) ---
+  const getUniqueDays = () => {
+      // Get all unique dates 'YYYY-MM-DD' from sessions and sort them
+      const days = new Set(sessions.map(s => format(new Date(s.startTime), 'yyyy-MM-dd')));
+      return [...days].sort();
+  };
+  const sortedUniqueDays = getUniqueDays();
+
+  // 1. Calculate Current Streak
+  const calculateCurrentStreak = () => {
+    if (!sortedUniqueDays.length) return 0;
     let streak = 0;
     let checkDate = new Date();
-    if (daysMap.has(format(checkDate, 'yyyy-MM-dd'))) streak++;
+    
+    // Check if we studied today?
+    if (sortedUniqueDays.includes(format(checkDate, 'yyyy-MM-dd'))) streak++;
     else {
+        // If not today, did we study yesterday? (Streak is still alive if we missed today but haven't broken the chain yet)
         checkDate = subDays(checkDate, 1);
-        if (!daysMap.has(format(checkDate, 'yyyy-MM-dd'))) return 0;
+        if (!sortedUniqueDays.includes(format(checkDate, 'yyyy-MM-dd'))) return 0; // Streak broken
         streak++;
     }
+
+    // Look backwards day by day
     while (true) {
         checkDate = subDays(checkDate, 1);
-        if (daysMap.has(format(checkDate, 'yyyy-MM-dd'))) streak++;
+        if (sortedUniqueDays.includes(format(checkDate, 'yyyy-MM-dd'))) streak++;
         else break;
     }
     return streak;
+  };
+
+  // 2. Calculate Highest Streak (All Time)
+  const calculateHighestStreak = () => {
+    if (!sortedUniqueDays.length) return 0;
+    let maxStreak = 1;
+    let currentStreak = 1;
+
+    for (let i = 0; i < sortedUniqueDays.length - 1; i++) {
+        const date1 = parseISO(sortedUniqueDays[i]);
+        const date2 = parseISO(sortedUniqueDays[i+1]);
+        
+        // Check if dates are consecutive (difference is exactly 1 day)
+        if (differenceInCalendarDays(date2, date1) === 1) {
+            currentStreak++;
+        } else {
+            currentStreak = 1; // Reset if gap found
+        }
+        
+        if (currentStreak > maxStreak) maxStreak = currentStreak;
+    }
+    return maxStreak;
   };
 
   // --- CHART DATA ---
@@ -80,16 +118,10 @@ const Dashboard = () => {
 
   const chartData = chartView === 'weekly' ? weeklyData : getMonthlyData();
 
-  // --- EXACT EQUIDISTANT SCALE LOGIC ---
-  // 1. Get the highest bar in the current view
+  // Scale Logic
   const maxMinutes = Math.max(0, ...chartData.map(d => d.minutes));
-  
-  // 2. Calculate the "Ceiling Hour". 
-  // If max is 0, default to 1 hour. If max is 130mins, ceiling is 3 hours (180 mins).
   const maxHourCap = Math.max(1, Math.ceil(maxMinutes / 60));
   const maxDomainValue = maxHourCap * 60; 
-
-  // 3. Create explicit ticks: [0, 60, 120, 180...]
   const yAxisTicks = [];
   for (let i = 0; i <= maxHourCap; i++) {
     yAxisTicks.push(i * 60);
@@ -133,18 +165,24 @@ const Dashboard = () => {
           </div>
         </div>
 
+        {/* --- STREAK CARD (UPDATED) --- */}
         <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
           <div className="flex justify-between items-start">
             <div>
               <p className="text-sm text-gray-500 uppercase font-semibold">Current Streak</p>
-              <h3 className="text-3xl font-bold mt-1">{calculateStreak()} <span className="text-base font-normal text-gray-400">days</span></h3>
+              <h3 className="text-3xl font-bold mt-1">{calculateCurrentStreak()} <span className="text-base font-normal text-gray-400">days</span></h3>
             </div>
             <div className="p-2 bg-orange-50 dark:bg-orange-900/20 rounded-lg text-orange-600">
               <Flame size={24} />
             </div>
           </div>
-          <div className="mt-4 text-sm text-gray-500">
-            Consistency is key to CDS success.
+          
+          {/* Highest Streak Badge */}
+          <div className="mt-4 flex items-center">
+             <div className="flex items-center gap-1.5 px-3 py-1 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-500 rounded-lg text-xs font-bold border border-yellow-200 dark:border-yellow-900">
+                <Trophy size={14} />
+                <span>Best: {calculateHighestStreak()} days</span>
+             </div>
           </div>
         </div>
 
@@ -206,13 +244,13 @@ const Dashboard = () => {
                 />
                 <YAxis 
                     type="number" 
-                    domain={[0, maxDomainValue]} // <--- FORCES GRAPH TO END EXACTLY AT MAX HOUR
+                    domain={[0, maxDomainValue]} 
                     tick={{fontSize: 10}} 
                     axisLine={false} 
                     tickLine={false}
-                    ticks={yAxisTicks} // <--- FORCES EQUIDISTANT TICKS [0, 60, 120...]
+                    ticks={yAxisTicks} 
                     tickFormatter={(val) => val === 0 ? '0' : `${val / 60}`} 
-                    interval={0} // Show all calculated ticks
+                    interval={0} 
                 />
                 <Tooltip 
                   cursor={{fill: 'transparent'}}
