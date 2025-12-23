@@ -15,11 +15,11 @@ const Tasks = () => {
   // Default to Today
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [currentMonth, setCurrentMonth] = useState(new Date()); 
-  const [showCalendar, setShowCalendar] = useState(false); // Hidden by default
+  const [showCalendar, setShowCalendar] = useState(false); 
   const [newTask, setNewTask] = useState('');
   
   // Alert States
-  const [pendingAlert, setPendingAlert] = useState(null); 
+  const [overdueTasks, setOverdueTasks] = useState([]); // NOW STORES THE ACTUAL TASKS
   const [appreciationMsg, setAppreciationMsg] = useState(null);
 
   // --- DATABASE QUERIES ---
@@ -32,7 +32,28 @@ const Tasks = () => {
 
   const allTasks = useLiveQuery(() => db.tasks.toArray());
 
-  // --- CALENDAR GENERATION LOGIC ---
+  // --- REMINDERS & GHOST TASK DETECTION ---
+  useEffect(() => {
+    const checkPending = () => {
+      if (!allTasks) return;
+      
+      // "Today" at 00:00:00 hours
+      const today = startOfDay(new Date());
+      
+      // Find tasks strictly BEFORE today that are NOT done
+      const foundOverdue = allTasks.filter(t => {
+        const taskDate = parseISO(t.date);
+        return isBefore(taskDate, today) && !t.isCompleted;
+      });
+
+      setOverdueTasks(foundOverdue);
+    };
+
+    checkPending();
+  }, [allTasks]);
+
+
+  // --- CALENDAR LOGIC ---
   const renderCalendar = () => {
     const monthStart = startOfMonth(currentMonth);
     const monthEnd = endOfMonth(monthStart);
@@ -48,7 +69,6 @@ const Tasks = () => {
         const cloneDay = day;
         const dayString = format(day, 'yyyy-MM-dd');
         
-        // Dots Logic
         const hasTasks = allTasks?.some(t => t.date === dayString && !t.isCompleted);
         const isCompletedDay = allTasks?.some(t => t.date === dayString && t.isCompleted) && !hasTasks;
         const isSelected = isSameDay(day, selectedDate);
@@ -65,13 +85,11 @@ const Tasks = () => {
             `}
             onClick={() => {
                 setSelectedDate(cloneDay);
-                setShowCalendar(false); // Close calendar after selection
+                setShowCalendar(false); 
                 if(!isSameMonth(cloneDay, currentMonth)) setCurrentMonth(cloneDay);
             }}
           >
             <span className="text-sm">{format(day, 'd')}</span>
-            
-            {/* Tiny Dots */}
             <div className="absolute bottom-1 flex gap-0.5">
                 {hasTasks && <div className={`w-1 h-1 rounded-full ${isSelected ? 'bg-white' : 'bg-red-500'}`}></div>}
                 {isCompletedDay && <div className={`w-1 h-1 rounded-full ${isSelected ? 'bg-white/70' : 'bg-green-500'}`}></div>}
@@ -113,27 +131,15 @@ const Tasks = () => {
   };
 
   const deleteTask = async (id) => {
-    if (confirm('Delete this task?')) await db.tasks.delete(id);
+    // No confirmation for quick cleanup of ghosts
+    await db.tasks.delete(id);
   };
-
-  // --- REMINDERS ---
-  useEffect(() => {
-    const checkPending = () => {
-      if (!allTasks) return;
-      const today = startOfDay(new Date());
-      const overdue = allTasks.filter(t => {
-        return isBefore(parseISO(t.date), today) && !t.isCompleted;
-      });
-      if (overdue.length > 0) setPendingAlert(overdue.length);
-    };
-    checkPending();
-  }, [allTasks]);
 
 
   return (
     <div className="pb-32 relative max-w-2xl mx-auto">
 
-      {/* --- POPUPS --- */}
+      {/* --- APPRECIATION POPUP --- */}
       {appreciationMsg && (
         <div className={`fixed top-20 left-1/2 transform -translate-x-1/2 z-50 px-6 py-3 rounded-full shadow-xl flex items-center gap-2 font-bold animate-bounce ${
           appreciationMsg.type === 'grand' ? 'bg-yellow-500 text-black' : 'bg-green-600 text-white'
@@ -143,16 +149,47 @@ const Tasks = () => {
         </div>
       )}
       
-      {pendingAlert && (
-        <div className="fixed top-4 right-4 z-40 bg-red-100 text-red-600 px-4 py-2 rounded-lg text-xs font-bold border border-red-200 flex items-center gap-2 shadow-sm">
-            <AlertTriangle size={14} /> {pendingAlert} overdue tasks
+      {/* --- NEW: OVERDUE TASKS MANAGER --- */}
+      {overdueTasks.length > 0 && (
+        <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800 rounded-xl animate-in slide-in-from-top-2">
+            <div className="flex items-center gap-2 text-red-700 dark:text-red-400 font-bold mb-2">
+                <AlertTriangle size={18} />
+                <h3>{overdueTasks.length} Overdue Task{overdueTasks.length > 1 ? 's' : ''} Found</h3>
+            </div>
+            <p className="text-xs text-red-600/70 mb-3">These tasks are from past dates. Clear them to reset your status.</p>
+            
+            <div className="space-y-2 max-h-40 overflow-y-auto custom-scrollbar pr-1">
+                {overdueTasks.map(task => (
+                    <div key={task.id} className="flex items-center justify-between bg-white dark:bg-gray-800 p-2 rounded-lg shadow-sm border border-red-100 dark:border-red-900/30">
+                        <div className="flex flex-col">
+                            <span className="text-sm font-medium text-gray-800 dark:text-gray-200">{task.title}</span>
+                            <span className="text-[10px] text-gray-400">{format(parseISO(task.date), 'MMM do, yyyy')}</span>
+                        </div>
+                        <div className="flex gap-2">
+                            <button 
+                                onClick={() => toggleTask(task)} 
+                                className="p-1.5 text-green-600 hover:bg-green-50 rounded bg-green-50/50" 
+                                title="Mark Done"
+                            >
+                                <CheckCircle size={16} />
+                            </button>
+                            <button 
+                                onClick={() => deleteTask(task.id)} 
+                                className="p-1.5 text-red-500 hover:bg-red-50 rounded bg-red-50/50" 
+                                title="Delete Forever"
+                            >
+                                <Trash2 size={16} />
+                            </button>
+                        </div>
+                    </div>
+                ))}
+            </div>
         </div>
       )}
 
       {/* --- HEADER --- */}
       <div className="flex justify-between items-end mb-6 pt-2">
         <div>
-            {/* BIG DATE DISPLAY */}
             <h1 className="text-5xl font-bold text-army-500 tracking-tighter">
                 {format(selectedDate, 'd')}
             </h1>
