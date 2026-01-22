@@ -13,7 +13,6 @@ const StudyTimer = () => {
   const [isActive, setIsActive] = useState(false);
   const [sessionStart, setSessionStart] = useState(null);
   
-  // NEW: State for the shame modal
   const [showShameModal, setShowShameModal] = useState(false);
 
   // --- Timer Persistence Logic ---
@@ -67,26 +66,23 @@ const StudyTimer = () => {
       if(selectedSubtopic) localStorage.setItem('timerSubtopic', selectedSubtopic);
   }, [selectedSubject, selectedSubtopic]);
 
-  // --- NEW: Intercept Pause Click ---
+  // --- UPDATED: Intercept Pause Click (5 Mins) ---
   const handlePauseClick = () => {
-    // 60 minutes = 3600 seconds
-    if (seconds < 3600) {
+    // 5 minutes = 300 seconds
+    if (seconds < 300) {
       setShowShameModal(true);
     } else {
-      setIsActive(false); // Normal pause if over 60 mins
+      setIsActive(false); 
     }
   };
 
-  // Button 1: "Thank You bhai..."
   const handleKeepStudying = () => {
     setShowShameModal(false);
-    // Do nothing else, timer stays active
   };
 
-  // Button 2: "Mera CDS clear nahi hoga..."
   const handleGiveUp = () => {
     setShowShameModal(false);
-    setIsActive(false); // Actually pause the timer
+    setIsActive(false);
     setTimeout(() => {
         alert("Laanat hai bhai Tujhpe! 😡");
     }, 100);
@@ -100,10 +96,11 @@ const StudyTimer = () => {
     localStorage.setItem('timerIsActive', 'false');
   };
 
+  // --- UPDATED: Save Check (5 Mins) ---
   const handleSave = async () => {
-    // 60 mins check for saving
-    if (seconds < 3600) {
-      alert("Session too short to save (< 60 mins).");
+    // 5 mins check for saving
+    if (seconds < 300) {
+      alert("Session too short to save (< 5 mins).");
       return;
     }
     if (!selectedSubtopic) {
@@ -136,7 +133,7 @@ const StudyTimer = () => {
   return (
     <div className="max-w-2xl mx-auto space-y-8 relative">
       
-      {/* --- SHAME MODAL START --- */}
+      {/* --- SHAME MODAL --- */}
       {showShameModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm animate-in fade-in zoom-in duration-200">
           <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 md:p-8 max-w-md w-full border-2 border-red-500 shadow-2xl text-center space-y-6">
@@ -150,7 +147,7 @@ const StudyTimer = () => {
             </h3>
             
             <p className="text-gray-500 dark:text-gray-400 text-sm">
-              You haven't even completed 1 hour yet. Weakness is not an option.
+              You haven't even completed 5 minutes yet. Weakness is not an option.
             </p>
 
             <div className="grid gap-3">
@@ -171,7 +168,6 @@ const StudyTimer = () => {
           </div>
         </div>
       )}
-      {/* --- SHAME MODAL END --- */}
 
       <div className="text-center space-y-2">
         <h2 className="text-3xl font-bold">Focus Timer</h2>
@@ -219,7 +215,6 @@ const StudyTimer = () => {
                 <Play size={20} /> Start
               </button>
             ) : (
-              // MODIFIED: Calls handlePauseClick instead of setting isActive directly
               <button onClick={handlePauseClick} className="flex items-center gap-2 px-8 py-3 bg-yellow-500 hover:bg-yellow-600 text-white rounded-full text-lg font-semibold transition-transform active:scale-95">
                 <Pause size={20} /> Pause
               </button>
