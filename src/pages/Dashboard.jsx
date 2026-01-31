@@ -273,12 +273,13 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* Recent Activity */}
+       {/* --- RECENT ACTIVITY (UNLIMITED SCROLL) --- */}
         <div className="space-y-6 h-full flex flex-col">
             <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 flex-1 overflow-hidden flex flex-col">
                 <h3 className="font-semibold mb-4 flex-shrink-0">Recent Sessions</h3>
+                {/* Removed slice() so it shows ALL history */}
                 <div className="overflow-y-auto flex-1 space-y-3 pr-1 custom-scrollbar">
-                    {sessions.slice().reverse().slice(0, 10).map(session => (
+                    {sessions.slice().reverse().map(session => (
                     <div key={session.id} className="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-900 rounded-lg text-xs">
                         <div>
                             <div className="font-medium text-gray-900 dark:text-gray-200">
