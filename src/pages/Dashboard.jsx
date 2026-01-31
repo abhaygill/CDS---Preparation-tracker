@@ -37,30 +37,25 @@ const Dashboard = () => {
   const todaySessions = sessions.filter(s => isSameDay(new Date(s.startTime), new Date()));
   const todayMinutes = Math.round(todaySessions.reduce((acc, s) => acc + s.durationSeconds, 0) / 60);
 
-  // --- STREAK LOGIC (Current & Highest) ---
+  // --- STREAK LOGIC ---
   const getUniqueDays = () => {
-      // Get all unique dates 'YYYY-MM-DD' from sessions and sort them
       const days = new Set(sessions.map(s => format(new Date(s.startTime), 'yyyy-MM-dd')));
       return [...days].sort();
   };
   const sortedUniqueDays = getUniqueDays();
 
-  // 1. Calculate Current Streak
   const calculateCurrentStreak = () => {
     if (!sortedUniqueDays.length) return 0;
     let streak = 0;
     let checkDate = new Date();
     
-    // Check if we studied today?
     if (sortedUniqueDays.includes(format(checkDate, 'yyyy-MM-dd'))) streak++;
     else {
-        // If not today, did we study yesterday? (Streak is still alive if we missed today but haven't broken the chain yet)
         checkDate = subDays(checkDate, 1);
-        if (!sortedUniqueDays.includes(format(checkDate, 'yyyy-MM-dd'))) return 0; // Streak broken
+        if (!sortedUniqueDays.includes(format(checkDate, 'yyyy-MM-dd'))) return 0; 
         streak++;
     }
 
-    // Look backwards day by day
     while (true) {
         checkDate = subDays(checkDate, 1);
         if (sortedUniqueDays.includes(format(checkDate, 'yyyy-MM-dd'))) streak++;
@@ -69,7 +64,6 @@ const Dashboard = () => {
     return streak;
   };
 
-  // 2. Calculate Highest Streak (All Time)
   const calculateHighestStreak = () => {
     if (!sortedUniqueDays.length) return 0;
     let maxStreak = 1;
@@ -79,13 +73,11 @@ const Dashboard = () => {
         const date1 = parseISO(sortedUniqueDays[i]);
         const date2 = parseISO(sortedUniqueDays[i+1]);
         
-        // Check if dates are consecutive (difference is exactly 1 day)
         if (differenceInCalendarDays(date2, date1) === 1) {
             currentStreak++;
         } else {
-            currentStreak = 1; // Reset if gap found
+            currentStreak = 1; 
         }
-        
         if (currentStreak > maxStreak) maxStreak = currentStreak;
     }
     return maxStreak;
@@ -165,7 +157,6 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* --- STREAK CARD (UPDATED) --- */}
         <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
           <div className="flex justify-between items-start">
             <div>
@@ -177,7 +168,6 @@ const Dashboard = () => {
             </div>
           </div>
           
-          {/* Highest Streak Badge */}
           <div className="mt-4 flex items-center">
              <div className="flex items-center gap-1.5 px-3 py-1 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-500 rounded-lg text-xs font-bold border border-yellow-200 dark:border-yellow-900">
                 <Trophy size={14} />
@@ -273,7 +263,7 @@ const Dashboard = () => {
           </div>
         </div>
 
-       {/* --- RECENT ACTIVITY (UNLIMITED SCROLL) --- */}
+        {/* --- RECENT ACTIVITY (UNLIMITED SCROLL) --- */}
         <div className="space-y-6 h-full flex flex-col">
             <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 flex-1 overflow-hidden flex flex-col">
                 <h3 className="font-semibold mb-4 flex-shrink-0">Recent Sessions</h3>
