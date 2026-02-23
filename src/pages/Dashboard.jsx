@@ -1,23 +1,33 @@
 import React, { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, exportData, importData } from '../lib/db';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
+import { 
+  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
+  PieChart, Pie, Cell, Legend // <--- ADDED PIE CHART IMPORTS
+} from 'recharts';
 import { 
   format, subDays, isSameDay, startOfMonth, endOfMonth, 
   eachDayOfInterval, subMonths, addMonths, parseISO, differenceInCalendarDays 
 } from 'date-fns';
 import { 
   Download, Upload, Flame, Clock, BookOpen, ChevronLeft, ChevronRight, 
-  Calendar, Trophy 
+  Calendar, Trophy, PieChart as PieChartIcon, ArrowLeft 
 } from 'lucide-react';
+
+// Colors for the drill-down topic chart
+const TOPIC_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316'];
 
 const Dashboard = () => {
   const sessions = useLiveQuery(() => db.sessions.toArray()) || [];
+  const subjects = useLiveQuery(() => db.subjects.toArray());
   const subtopics = useLiveQuery(() => db.subtopics.toArray());
   const progress = useLiveQuery(() => db.progress.toArray());
 
   const [chartView, setChartView] = useState('weekly'); 
   const [exploreMonth, setExploreMonth] = useState(new Date());
+  
+  // --- NEW: PIE CHART STATE ---
+  const [selectedPieSubject, setSelectedPieSubject] = useState(null); // null = show subjects, ID = show topics
 
   // --- HELPERS ---
   const formatDuration = (totalMinutes) => {
@@ -83,7 +93,7 @@ const Dashboard = () => {
     return maxStreak;
   };
 
-  // --- CHART DATA ---
+  // --- BAR CHART DATA ---
   const weeklyData = Array.from({ length: 7 }, (_, i) => {
     const d = subDays(new Date(), 6 - i);
     const daySessions = sessions.filter(s => isSameDay(new Date(s.startTime), d));
@@ -110,7 +120,6 @@ const Dashboard = () => {
 
   const chartData = chartView === 'weekly' ? weeklyData : getMonthlyData();
 
-  // Scale Logic
   const maxMinutes = Math.max(0, ...chartData.map(d => d.minutes));
   const maxHourCap = Math.max(1, Math.ceil(maxMinutes / 60));
   const maxDomainValue = maxHourCap * 60; 
@@ -118,6 +127,24 @@ const Dashboard = () => {
   for (let i = 0; i <= maxHourCap; i++) {
     yAxisTicks.push(i * 60);
   }
+
+  // --- NEW: PIE CHART DATA LOGIC ---
+  // Level 1: Subjects
+  const subjectPieData = subjects?.map(subj => {
+    const subjSessions = sessions.filter(s => s.subjectId === subj.id);
+    const totalMins = Math.round(subjSessions.reduce((acc, s) => acc + s.durationSeconds, 0) / 60);
+    return { id: subj.id, name: subj.name, value: totalMins, color: subj.color || '#5c7c51' };
+  }).filter(d => d.value > 0) || [];
+
+  // Level 2: Topics (if a subject is selected)
+  const topicPieData = selectedPieSubject ? subtopics?.filter(t => t.subjectId === selectedPieSubject).map((topic, index) => {
+    const topicSessions = sessions.filter(s => s.subtopicId === topic.id);
+    const totalMins = Math.round(topicSessions.reduce((acc, s) => acc + s.durationSeconds, 0) / 60);
+    return { id: topic.id, name: topic.title, value: totalMins, color: TOPIC_COLORS[index % TOPIC_COLORS.length] };
+  }).filter(d => d.value > 0) : [];
+
+  const activePieData = selectedPieSubject ? topicPieData : subjectPieData;
+  const activePieSubjectName = selectedPieSubject ? subjects?.find(s => s.id === selectedPieSubject)?.name : '';
 
   const fileInputRef = React.useRef();
 
@@ -195,14 +222,14 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* Charts Area */}
+      {/* --- ROW 2: BAR CHART & ACTIVITY --- */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
-        {/* --- CHART SECTION --- */}
+        {/* BAR CHART SECTION */}
         <div className="lg:col-span-2 bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 h-80 flex flex-col">
           <div className="flex justify-between items-center mb-4">
             {chartView === 'weekly' ? (
-               <h3 className="font-bold text-gray-800 dark:text-gray-200">Last 7 Days</h3>
+               <h3 className="font-bold text-gray-800 dark:text-gray-200">Study Frequency</h3>
             ) : (
                <div className="flex items-center gap-2">
                   <button onClick={() => setExploreMonth(subMonths(exploreMonth, 1))} className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"><ChevronLeft size={16} /></button>
@@ -225,23 +252,8 @@ const Dashboard = () => {
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={chartData} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.2} />
-                <XAxis 
-                    dataKey="name" 
-                    tick={{fontSize: 10}} 
-                    axisLine={false} 
-                    tickLine={false} 
-                    interval={chartView === 'monthly' ? 2 : 0} 
-                />
-                <YAxis 
-                    type="number" 
-                    domain={[0, maxDomainValue]} 
-                    tick={{fontSize: 10}} 
-                    axisLine={false} 
-                    tickLine={false}
-                    ticks={yAxisTicks} 
-                    tickFormatter={(val) => val === 0 ? '0' : `${val / 60}`} 
-                    interval={0} 
-                />
+                <XAxis dataKey="name" tick={{fontSize: 10}} axisLine={false} tickLine={false} interval={chartView === 'monthly' ? 2 : 0} />
+                <YAxis type="number" domain={[0, maxDomainValue]} tick={{fontSize: 10}} axisLine={false} tickLine={false} ticks={yAxisTicks} tickFormatter={(val) => val === 0 ? '0' : `${val / 60}`} interval={0} />
                 <Tooltip 
                   cursor={{fill: 'transparent'}}
                   content={({ active, payload }) => {
@@ -263,11 +275,10 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* --- RECENT ACTIVITY (UNLIMITED SCROLL) --- */}
-        <div className="space-y-6 h-full flex flex-col">
+        {/* RECENT ACTIVITY */}
+        <div className="space-y-6 h-80 flex flex-col">
             <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 flex-1 overflow-hidden flex flex-col">
                 <h3 className="font-semibold mb-4 flex-shrink-0">Recent Sessions</h3>
-                {/* Removed slice() so it shows ALL history */}
                 <div className="overflow-y-auto flex-1 space-y-3 pr-1 custom-scrollbar">
                     {sessions.slice().reverse().map(session => (
                     <div key={session.id} className="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-900 rounded-lg text-xs">
@@ -293,6 +304,74 @@ const Dashboard = () => {
         </div>
 
       </div>
+
+      {/* --- ROW 3: NEW PIE CHART SECTION --- */}
+      <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 flex flex-col items-center justify-center">
+        
+        <div className="w-full flex justify-between items-center mb-6">
+            <div className="flex items-center gap-2">
+                <PieChartIcon className="text-army-500" size={24} />
+                <h3 className="font-bold text-lg text-gray-900 dark:text-white">
+                    {selectedPieSubject ? `Topic Breakdown: ${activePieSubjectName}` : 'Subject Distribution'}
+                </h3>
+            </div>
+            {selectedPieSubject && (
+                <button 
+                    onClick={() => setSelectedPieSubject(null)}
+                    className="flex items-center gap-1 text-xs font-bold text-army-500 hover:bg-army-50 dark:hover:bg-gray-700 px-3 py-1.5 rounded transition"
+                >
+                    <ArrowLeft size={14} /> Back to Subjects
+                </button>
+            )}
+        </div>
+
+        {activePieData.length === 0 ? (
+            <div className="py-20 text-gray-400 text-sm">Not enough data to generate chart. Start studying!</div>
+        ) : (
+            <div className="w-full h-80 flex justify-center items-center">
+                <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                        <Pie
+                            data={activePieData}
+                            dataKey="value"
+                            nameKey="name"
+                            cx="50%"
+                            cy="50%"
+                            innerRadius={selectedPieSubject ? 60 : 0} // Donut shape for topics, solid for subjects
+                            outerRadius={110}
+                            paddingAngle={2}
+                            onClick={(data) => {
+                                // Only drill down if we are currently looking at subjects
+                                if (!selectedPieSubject) setSelectedPieSubject(data.id);
+                            }}
+                            cursor={!selectedPieSubject ? "pointer" : "default"}
+                        >
+                            {activePieData.map((entry, index) => (
+                                <Cell key={`cell-${index}`} fill={entry.color} />
+                            ))}
+                        </Pie>
+                        <Tooltip 
+                            content={({ active, payload }) => {
+                                if (active && payload && payload.length) {
+                                    const data = payload[0].payload;
+                                    return (
+                                        <div className="bg-gray-900 text-white text-xs p-3 rounded shadow-xl border border-gray-700">
+                                            <p className="font-bold text-sm mb-1">{data.name}</p>
+                                            <p className="text-gray-300">Time: <span className="text-army-400 font-bold">{formatDuration(data.value)}</span></p>
+                                            {!selectedPieSubject && <p className="text-[10px] text-gray-500 mt-2 italic">Click slice to explore topics</p>}
+                                        </div>
+                                    );
+                                }
+                                return null;
+                            }}
+                        />
+                        <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{ fontSize: '12px' }}/>
+                    </PieChart>
+                </ResponsiveContainer>
+            </div>
+        )}
+      </div>
+
     </div>
   );
 };
