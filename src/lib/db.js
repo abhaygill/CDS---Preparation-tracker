@@ -2,14 +2,29 @@ import Dexie from 'dexie';
 
 export const db = new Dexie('CDSTrackerDB');
 
-// Schema Definition
+// --- VERSION 1 (Keep exactly as it was for upgrade compatibility) ---
 db.version(1).stores({
   subjects: '++id, name, color',
   subtopics: '++id, subjectId, title', 
   progress: '++id, subtopicId, subjectId', 
   sessions: '++id, subjectId, subtopicId, startTime, endTime, durationSeconds',
-  tasks: '++id, date, title, isCompleted', // <--- ADD THIS LINE ONLY
+  tasks: '++id, date, title, isCompleted',
   settings: 'key'
+});
+
+// --- VERSION 2 (Added SSB tracking tables) ---
+db.version(2).stores({
+  subjects: '++id, name, color',
+  subtopics: '++id, subjectId, title', 
+  progress: '++id, subtopicId, subjectId', 
+  sessions: '++id, subjectId, subtopicId, startTime, endTime, durationSeconds',
+  tasks: '++id, date, title, isCompleted',
+  settings: 'key',
+  
+  // --- NEW SSB TABLES ---
+  ssb_activities: '++id, date, category, subCategory, title', 
+  ssb_feedback: '++id, category, date', 
+  ssb_io_prep: '++id, type' 
 });
 
 // Seed Data
@@ -41,11 +56,7 @@ db.on('populate', () => {
   db.subtopics.bulkAdd(SEED_DATA.subtopics);
 });
 
-// --- Cloud Hooks (Placeholders for future backend) ---
-// export const syncToCloud = async () => { console.log("Cloud sync not implemented"); };
-// export const fetchFromCloud = async () => { console.log("Cloud fetch not implemented"); };
-
-// --- Export/Import Utilities ---
+// --- Export/Import Utilities (UPDATED to include Tasks & SSB) ---
 export const exportData = async () => {
   const allData = {
     timestamp: new Date().toISOString(),
@@ -53,6 +64,10 @@ export const exportData = async () => {
     subtopics: await db.subtopics.toArray(),
     progress: await db.progress.toArray(),
     sessions: await db.sessions.toArray(),
+    tasks: await db.tasks.toArray(), // Fixed: Added tasks
+    ssb_activities: await db.ssb_activities.toArray(), // Added SSB
+    ssb_feedback: await db.ssb_feedback.toArray(),     // Added SSB
+    ssb_io_prep: await db.ssb_io_prep.toArray(),       // Added SSB
   };
   const blob = new Blob([JSON.stringify(allData)], {type: "application/json"});
   const url = URL.createObjectURL(blob);
@@ -67,15 +82,28 @@ export const importData = async (file) => {
   reader.onload = async (e) => {
     try {
       const data = JSON.parse(e.target.result);
-      await db.transaction('rw', db.subjects, db.subtopics, db.progress, db.sessions, async () => {
-        await db.subjects.clear(); await db.subjects.bulkAdd(data.subjects);
-        await db.subtopics.clear(); await db.subtopics.bulkAdd(data.subtopics);
-        await db.progress.clear(); await db.progress.bulkAdd(data.progress);
-        await db.sessions.clear(); await db.sessions.bulkAdd(data.sessions);
+      
+      // Define all tables we are writing to
+      const tables = [
+        db.subjects, db.subtopics, db.progress, db.sessions, db.tasks,
+        db.ssb_activities, db.ssb_feedback, db.ssb_io_prep
+      ];
+      
+      await db.transaction('rw', tables, async () => {
+        if(data.subjects) { await db.subjects.clear(); await db.subjects.bulkAdd(data.subjects); }
+        if(data.subtopics) { await db.subtopics.clear(); await db.subtopics.bulkAdd(data.subtopics); }
+        if(data.progress) { await db.progress.clear(); await db.progress.bulkAdd(data.progress); }
+        if(data.sessions) { await db.sessions.clear(); await db.sessions.bulkAdd(data.sessions); }
+        if(data.tasks) { await db.tasks.clear(); await db.tasks.bulkAdd(data.tasks); }
+        
+        if(data.ssb_activities) { await db.ssb_activities.clear(); await db.ssb_activities.bulkAdd(data.ssb_activities); }
+        if(data.ssb_feedback) { await db.ssb_feedback.clear(); await db.ssb_feedback.bulkAdd(data.ssb_feedback); }
+        if(data.ssb_io_prep) { await db.ssb_io_prep.clear(); await db.ssb_io_prep.bulkAdd(data.ssb_io_prep); }
       });
       window.location.reload();
     } catch (err) {
       alert("Invalid Backup File");
+      console.error(err);
     }
   };
   reader.readAsText(file);
