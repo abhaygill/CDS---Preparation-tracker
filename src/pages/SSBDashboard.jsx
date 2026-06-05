@@ -41,14 +41,14 @@ const SSBDashboard = () => {
           description="PIQ tracking, mock questions, and feedback storage."
           icon={Users}
           colorClass="bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400"
-          to="#" // <--- ADDED THIS
+          to="/ssb/interview" // <--- ADDED THIS
         />
         <SSBModuleCard 
           title="GTO Tasks" 
           description="GD, Lecturette, and outdoor task observations."
           icon={Target}
           colorClass="bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400"
-          to="#" // <--- ADDED THIS
+          to="/ssb/gto" // <--- ADDED THIS
         />
         <SSBModuleCard 
           title="Current Affairs" 
