@@ -10,6 +10,8 @@ import SSBDashboard from './pages/SSBDashboard'; // <-- ADD THIS IMPORT
 import Psychology from './pages/ssb/Psychology';
 import Interview from './pages/ssb/Interview'; // <-- ADD THIS
 import GTO from './pages/ssb/GTO'; // <-- ADD THIS
+import CurrentAffairs from './pages/ssb/CurrentAffairs';
+import Defence from './pages/ssb/Defence';
 
 function App() {
   return (
@@ -24,6 +26,8 @@ function App() {
           <Route path="/ssb/psychology" element={<Psychology />} />
           <Route path="/ssb/interview" element={<Interview />} /> {/* <-- ADD THIS */}
           <Route path="/ssb/gto" element={<GTO />} /> {/* <-- ADD THIS */}
+          <Route path="/ssb/current-affairs" element={<CurrentAffairs />} />
+          <Route path="/ssb/defence" element={<Defence />} />
         </Routes>
       </Layout>
     </Router>
