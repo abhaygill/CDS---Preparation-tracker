@@ -8,6 +8,8 @@ import Progress from './pages/Progress';
 import Tasks from './pages/Tasks';
 import SSBDashboard from './pages/SSBDashboard'; // <-- ADD THIS IMPORT
 import Psychology from './pages/ssb/Psychology';
+import Interview from './pages/ssb/Interview'; // <-- ADD THIS
+import GTO from './pages/ssb/GTO'; // <-- ADD THIS
 
 function App() {
   return (
@@ -20,6 +22,8 @@ function App() {
           <Route path="/tasks" element={<Tasks />} />
           <Route path="/ssb" element={<SSBDashboard />} /> {/* <-- ADD THIS ROUTE */}
           <Route path="/ssb/psychology" element={<Psychology />} />
+          <Route path="/ssb/interview" element={<Interview />} /> {/* <-- ADD THIS */}
+          <Route path="/ssb/gto" element={<GTO />} /> {/* <-- ADD THIS */}
         </Routes>
       </Layout>
     </Router>
