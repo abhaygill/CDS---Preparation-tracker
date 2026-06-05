@@ -109,6 +109,7 @@ const Layout = ({ children }) => {
           <NavItem to="/tasks" icon={ListTodo} label="Tasks" />
           <NavItem to="/timer" icon={Timer} label="Study Timer" />
           <NavItem to="/progress" icon={CheckSquare} label="Progress" />
+          <NavItem to="/ssb" icon={Target} label="SSB Prep" />
         </nav>
         
         <div className="p-4 border-t border-gray-200 dark:border-gray-700">
@@ -136,6 +137,7 @@ const Layout = ({ children }) => {
         <NavItem to="/tasks" icon={ListTodo} label="Tasks" mobile />
         <NavItem to="/timer" icon={Timer} label="Timer" mobile />
         <NavItem to="/progress" icon={CheckSquare} label="Topics" mobile />
+        <NavItem to="/ssb" icon={Target} label="SSB" mobile />
       </nav>
 
     </div>
