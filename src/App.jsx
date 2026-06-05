@@ -1,3 +1,4 @@
+// src/App.jsx
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Layout from './components/Layout';
@@ -5,6 +6,7 @@ import Dashboard from './pages/Dashboard';
 import StudyTimer from './pages/StudyTimer';
 import Progress from './pages/Progress';
 import Tasks from './pages/Tasks';
+import SSBDashboard from './pages/SSBDashboard'; // <-- ADD THIS IMPORT
 
 function App() {
   return (
@@ -15,6 +17,7 @@ function App() {
           <Route path="/timer" element={<StudyTimer />} />
           <Route path="/progress" element={<Progress />} />
           <Route path="/tasks" element={<Tasks />} />
+          <Route path="/ssb" element={<SSBDashboard />} /> {/* <-- ADD THIS ROUTE */}
         </Routes>
       </Layout>
     </Router>
