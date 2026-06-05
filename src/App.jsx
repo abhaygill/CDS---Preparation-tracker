@@ -7,6 +7,7 @@ import StudyTimer from './pages/StudyTimer';
 import Progress from './pages/Progress';
 import Tasks from './pages/Tasks';
 import SSBDashboard from './pages/SSBDashboard'; // <-- ADD THIS IMPORT
+import Psychology from './pages/ssb/Psychology';
 
 function App() {
   return (
@@ -18,6 +19,7 @@ function App() {
           <Route path="/progress" element={<Progress />} />
           <Route path="/tasks" element={<Tasks />} />
           <Route path="/ssb" element={<SSBDashboard />} /> {/* <-- ADD THIS ROUTE */}
+          <Route path="/ssb/psychology" element={<Psychology />} />
         </Routes>
       </Layout>
     </Router>
