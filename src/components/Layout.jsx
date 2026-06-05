@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { 
   LayoutDashboard, Timer, CheckSquare, ListTodo, 
-  Sun, Moon, ShieldAlert, ChevronLeft, ChevronRight 
+  Sun, Moon, ShieldAlert, ChevronLeft, ChevronRight, Target 
 } from 'lucide-react';
 import MotivationPopup from './MotivationPopup';
 
