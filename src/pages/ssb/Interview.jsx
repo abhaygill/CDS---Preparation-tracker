@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../lib/db';
 import { format, parseISO } from 'date-fns';
-import { ArrowLeft, Users, Plus, Trash2, Edit2, Check, MessageSquareWarning, HelpCircle } from 'lucide-react';
+import { ArrowLeft, Users, Plus, Trash2, Edit2, Check, MessageSquareWarning, HelpCircle, Filter } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const Interview = () => {
@@ -12,6 +12,9 @@ const Interview = () => {
   const [answer, setAnswer] = useState('');
   const [editingQAId, setEditingQAId] = useState(null);
   const [editAnswer, setEditAnswer] = useState('');
+  
+  // --- NEW: STATE FOR FILTERING ---
+  const [filterCategory, setFilterCategory] = useState('All');
 
   // --- STATE FOR FEEDBACK ---
   const [feedbackText, setFeedbackText] = useState('');
@@ -21,6 +24,11 @@ const Interview = () => {
   // --- QUERIES ---
   const qaBank = useLiveQuery(() => db.ssb_io_prep.where('type').equals('QA').reverse().toArray()) || [];
   const feedbacks = useLiveQuery(() => db.ssb_feedback.where('category').equals('IO').reverse().toArray()) || [];
+
+  // --- FILTER LOGIC ---
+  const filteredQABank = filterCategory === 'All' 
+    ? qaBank 
+    : qaBank.filter(qa => qa.topicCategory === filterCategory);
 
   // --- HANDLERS FOR Q&A ---
   const handleAddQA = async (e) => {
@@ -111,10 +119,34 @@ const Interview = () => {
           </div>
 
           <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm">
-            <h3 className="text-lg font-bold mb-4">My Interview Q&A Bank</h3>
+            {/* UPDATED HEADER WITH FILTER DROPDOWN */}
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
+              <h3 className="text-lg font-bold">My Interview Q&A Bank</h3>
+              <div className="flex items-center gap-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg px-2 py-1">
+                <Filter size={14} className="text-gray-400" />
+                <select 
+                  value={filterCategory} 
+                  onChange={e => setFilterCategory(e.target.value)}
+                  className="bg-transparent text-sm font-semibold text-blue-600 dark:text-blue-400 outline-none cursor-pointer py-1"
+                >
+                  <option value="All">All Categories (Recent First)</option>
+                  <option value="Personal/Family">Personal & Family</option>
+                  <option value="Education">Education & Academics</option>
+                  <option value="Hobbies/Interests">Hobbies & Interests</option>
+                  <option value="Achievements">Achievements & Sports</option>
+                  <option value="Strengths/Weaknesses">Strengths & Weaknesses</option>
+                  <option value="Defence/Current Affairs">Defence/Current Affairs</option>
+                </select>
+              </div>
+            </div>
+
             <div className="space-y-4 max-h-[500px] overflow-y-auto custom-scrollbar pr-2">
-              {qaBank.length === 0 && <p className="text-gray-400 text-sm text-center py-4">No questions drafted yet.</p>}
-              {qaBank.map(qa => (
+              {filteredQABank.length === 0 && (
+                <p className="text-gray-400 text-sm text-center py-8 bg-gray-50/50 dark:bg-gray-900/30 rounded-xl border-2 border-dashed border-gray-200 dark:border-gray-800">
+                  {filterCategory === 'All' ? 'No questions drafted yet.' : `No questions drafted for ${filterCategory} yet.`}
+                </p>
+              )}
+              {filteredQABank.map(qa => (
                 <div key={qa.id} className="bg-blue-50/50 dark:bg-gray-900 p-4 rounded-xl border border-blue-100 dark:border-gray-700">
                   <div className="flex justify-between items-start mb-2">
                     <div>
