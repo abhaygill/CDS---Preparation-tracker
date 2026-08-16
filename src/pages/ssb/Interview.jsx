@@ -2,18 +2,21 @@ import React, { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../lib/db';
 import { format, parseISO } from 'date-fns';
-import { ArrowLeft, Users, Plus, Trash2, Edit2, Check, MessageSquareWarning, HelpCircle, Filter } from 'lucide-react';
+import { ArrowLeft, Users, Plus, Trash2, Edit2, Check, MessageSquareWarning, HelpCircle, Filter, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const Interview = () => {
   // --- STATE FOR Q&A BANK ---
   const [topicCategory, setTopicCategory] = useState('Personal/Family');
+  const [isCustomCategory, setIsCustomCategory] = useState(false);
+  const [customCategoryInput, setCustomCategoryInput] = useState('');
+  
   const [question, setQuestion] = useState('');
   const [answer, setAnswer] = useState('');
   const [editingQAId, setEditingQAId] = useState(null);
   const [editAnswer, setEditAnswer] = useState('');
   
-  // --- NEW: STATE FOR FILTERING ---
+  // --- STATE FOR FILTERING ---
   const [filterCategory, setFilterCategory] = useState('All');
 
   // --- STATE FOR FEEDBACK ---
@@ -25,6 +28,14 @@ const Interview = () => {
   const qaBank = useLiveQuery(() => db.ssb_io_prep.where('type').equals('QA').reverse().toArray()) || [];
   const feedbacks = useLiveQuery(() => db.ssb_feedback.where('category').equals('IO').reverse().toArray()) || [];
 
+  // --- DYNAMIC CATEGORIES ---
+  // Combine default categories with any custom ones saved in the database
+  const defaultCategories = [
+    'Personal/Family', 'Education', 'Hobbies/Interests', 
+    'Achievements', 'Strengths/Weaknesses', 'Defence/Current Affairs'
+  ];
+  const allCategories = Array.from(new Set([...defaultCategories, ...qaBank.map(qa => qa.topicCategory)]));
+
   // --- FILTER LOGIC ---
   const filteredQABank = filterCategory === 'All' 
     ? qaBank 
@@ -34,15 +45,25 @@ const Interview = () => {
   const handleAddQA = async (e) => {
     e.preventDefault();
     if (!question.trim()) return;
+    
+    // Determine the final category to save
+    const finalCategory = isCustomCategory ? customCategoryInput.trim() : topicCategory;
+    if (!finalCategory) return;
+
     await db.ssb_io_prep.add({
       type: 'QA',
-      topicCategory,
+      topicCategory: finalCategory,
       question,
       answer,
       date: new Date().toISOString()
     });
+    
+    // Reset form
     setQuestion('');
     setAnswer('');
+    setIsCustomCategory(false);
+    setCustomCategoryInput('');
+    setTopicCategory(finalCategory); // Set the dropdown back to whatever they just added/used
   };
 
   const handleUpdateQA = async (id) => {
@@ -92,17 +113,47 @@ const Interview = () => {
             <h3 className="text-lg font-bold mb-4 flex items-center gap-2"><HelpCircle size={20} className="text-blue-500"/> Draft PIQ Answers</h3>
             <form onSubmit={handleAddQA} className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                
+                {/* DYNAMIC CATEGORY SELECTOR */}
                 <div>
                   <label className="block text-xs font-bold text-gray-500 mb-1">PIQ Category</label>
-                  <select value={topicCategory} onChange={e => setTopicCategory(e.target.value)} className="w-full p-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900">
-                    <option value="Personal/Family">Personal & Family</option>
-                    <option value="Education">Education & Academics</option>
-                    <option value="Hobbies/Interests">Hobbies & Interests</option>
-                    <option value="Achievements">Achievements & Sports</option>
-                    <option value="Strengths/Weaknesses">Strengths & Weaknesses</option>
-                    <option value="Defence/Current Affairs">Defence/Current Affairs</option>
-                  </select>
+                  {isCustomCategory ? (
+                    <div className="flex items-center gap-2">
+                      <input 
+                        type="text" 
+                        value={customCategoryInput} 
+                        onChange={e => setCustomCategoryInput(e.target.value)} 
+                        placeholder="Type new category name..." 
+                        required 
+                        className="w-full p-2.5 rounded-lg border border-blue-300 dark:border-blue-600 bg-blue-50 dark:bg-blue-900/20 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                      <button 
+                        type="button" 
+                        onClick={() => { setIsCustomCategory(false); setCustomCategoryInput(''); }}
+                        className="p-2 text-gray-400 hover:text-red-500 transition"
+                      >
+                        <X size={20} />
+                      </button>
+                    </div>
+                  ) : (
+                    <select 
+                      value={topicCategory} 
+                      onChange={e => {
+                        if (e.target.value === 'CUSTOM') setIsCustomCategory(true);
+                        else setTopicCategory(e.target.value);
+                      }} 
+                      className="w-full p-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900"
+                    >
+                      {allCategories.map(cat => (
+                        <option key={cat} value={cat}>{cat}</option>
+                      ))}
+                      <option value="CUSTOM" className="font-bold text-blue-600 bg-blue-50 dark:bg-blue-900/30">
+                        + Add Custom Category...
+                      </option>
+                    </select>
+                  )}
                 </div>
+
                 <div>
                   <label className="block text-xs font-bold text-gray-500 mb-1">Anticipated Question</label>
                   <input type="text" value={question} onChange={e => setQuestion(e.target.value)} placeholder="e.g. Why did your marks drop in 12th?" required className="w-full p-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900"/>
@@ -119,7 +170,7 @@ const Interview = () => {
           </div>
 
           <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm">
-            {/* UPDATED HEADER WITH FILTER DROPDOWN */}
+            {/* UPDATED HEADER WITH DYNAMIC FILTER DROPDOWN */}
             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
               <h3 className="text-lg font-bold">My Interview Q&A Bank</h3>
               <div className="flex items-center gap-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg px-2 py-1">
@@ -130,12 +181,9 @@ const Interview = () => {
                   className="bg-transparent text-sm font-semibold text-blue-600 dark:text-blue-400 outline-none cursor-pointer py-1"
                 >
                   <option value="All">All Categories (Recent First)</option>
-                  <option value="Personal/Family">Personal & Family</option>
-                  <option value="Education">Education & Academics</option>
-                  <option value="Hobbies/Interests">Hobbies & Interests</option>
-                  <option value="Achievements">Achievements & Sports</option>
-                  <option value="Strengths/Weaknesses">Strengths & Weaknesses</option>
-                  <option value="Defence/Current Affairs">Defence/Current Affairs</option>
+                  {allCategories.map(cat => (
+                    <option key={cat} value={cat}>{cat}</option>
+                  ))}
                 </select>
               </div>
             </div>
