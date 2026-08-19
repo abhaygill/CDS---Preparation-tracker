@@ -12,6 +12,7 @@ import Interview from './pages/ssb/Interview'; // <-- ADD THIS
 import GTO from './pages/ssb/GTO'; // <-- ADD THIS
 import CurrentAffairs from './pages/ssb/CurrentAffairs';
 import Defence from './pages/ssb/Defence';
+import PIQ from './pages/ssb/PIQ';
 
 function App() {
   return (
@@ -28,6 +29,7 @@ function App() {
           <Route path="/ssb/gto" element={<GTO />} /> {/* <-- ADD THIS */}
           <Route path="/ssb/current-affairs" element={<CurrentAffairs />} />
           <Route path="/ssb/defence" element={<Defence />} />
+          <Route path="/ssb/piq" element={<PIQ />} />
         </Routes>
       </Layout>
     </Router>
