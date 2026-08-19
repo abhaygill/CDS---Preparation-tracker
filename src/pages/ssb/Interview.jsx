@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../lib/db';
 import { format, parseISO } from 'date-fns';
-import { ArrowLeft, Users, Plus, Trash2, Edit2, Check, MessageSquareWarning, HelpCircle, Filter, X } from 'lucide-react';
+// Notice FileText is now safely imported below:
+import { ArrowLeft, Users, Plus, Trash2, Edit2, Check, MessageSquareWarning, HelpCircle, Filter, X, FileText } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const Interview = () => {
@@ -24,12 +25,18 @@ const Interview = () => {
   const [editingFeedbackId, setEditingFeedbackId] = useState(null);
   const [editFeedbackText, setEditFeedbackText] = useState('');
 
-  // --- QUERIES ---
-  const qaBank = useLiveQuery(() => db.ssb_io_prep.where('type').equals('QA').reverse().toArray()) || [];
-  const feedbacks = useLiveQuery(() => db.ssb_feedback.where('category').equals('IO').reverse().toArray()) || [];
+  // --- CRASH-PROOF QUERIES ---
+  const qaBank = useLiveQuery(async () => {
+    if (!db.ssb_io_prep) return [];
+    return await db.ssb_io_prep.where('type').equals('QA').reverse().toArray();
+  }) || [];
+  
+  const feedbacks = useLiveQuery(async () => {
+    if (!db.ssb_feedback) return [];
+    return await db.ssb_feedback.where('category').equals('IO').reverse().toArray();
+  }) || [];
 
   // --- DYNAMIC CATEGORIES ---
-  // Combine default categories with any custom ones saved in the database
   const defaultCategories = [
     'Personal/Family', 'Education', 'Hobbies/Interests', 
     'Achievements', 'Strengths/Weaknesses', 'Defence/Current Affairs'
@@ -44,9 +51,8 @@ const Interview = () => {
   // --- HANDLERS FOR Q&A ---
   const handleAddQA = async (e) => {
     e.preventDefault();
-    if (!question.trim()) return;
+    if (!question.trim() || !db.ssb_io_prep) return;
     
-    // Determine the final category to save
     const finalCategory = isCustomCategory ? customCategoryInput.trim() : topicCategory;
     if (!finalCategory) return;
 
@@ -58,12 +64,11 @@ const Interview = () => {
       date: new Date().toISOString()
     });
     
-    // Reset form
     setQuestion('');
     setAnswer('');
     setIsCustomCategory(false);
     setCustomCategoryInput('');
-    setTopicCategory(finalCategory); // Set the dropdown back to whatever they just added/used
+    setTopicCategory(finalCategory); 
   };
 
   const handleUpdateQA = async (id) => {
@@ -78,7 +83,7 @@ const Interview = () => {
   // --- HANDLERS FOR FEEDBACK ---
   const handleAddFeedback = async (e) => {
     e.preventDefault();
-    if (!feedbackText.trim()) return;
+    if (!feedbackText.trim() || !db.ssb_feedback) return;
     await db.ssb_feedback.add({ category: 'IO', date: new Date().toISOString(), text: feedbackText });
     setFeedbackText('');
   };
@@ -92,21 +97,35 @@ const Interview = () => {
     if (confirm("Delete this feedback?")) await db.ssb_feedback.delete(id);
   };
 
+  const safeFormatDate = (dateString) => {
+    try {
+      return format(parseISO(dateString), 'MMM do, yyyy');
+    } catch {
+      return 'Invalid Date';
+    }
+  };
+
   return (
     <div className="space-y-6 max-w-6xl mx-auto pb-20">
-      <div className="flex items-center gap-4">
-        <Link to="/ssb" className="p-2 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 transition">
-          <ArrowLeft size={20} />
-        </Link>
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-            <Users className="text-blue-500" size={28} /> Interview Prep (IO)
-          </h1>
+      
+      {/* HEADER WITH PIQ BUTTON */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <Link to="/ssb" className="p-2 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 transition">
+            <ArrowLeft size={20} />
+          </Link>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+              <Users className="text-blue-500" size={28} /> Interview Prep (IO)
+            </h1>
+          </div>
         </div>
-      </div>
+        
         <Link to="/ssb/piq" className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold transition shadow-sm">
            <FileText size={18} /> Open Master PIQ
         </Link>
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
         {/* LEFT COLUMN: PIQ & Q&A BANK */}
@@ -115,8 +134,6 @@ const Interview = () => {
             <h3 className="text-lg font-bold mb-4 flex items-center gap-2"><HelpCircle size={20} className="text-blue-500"/> Draft PIQ Answers</h3>
             <form onSubmit={handleAddQA} className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                
-                {/* DYNAMIC CATEGORY SELECTOR */}
                 <div>
                   <label className="block text-xs font-bold text-gray-500 mb-1">PIQ Category</label>
                   {isCustomCategory ? (
@@ -125,7 +142,7 @@ const Interview = () => {
                         type="text" 
                         value={customCategoryInput} 
                         onChange={e => setCustomCategoryInput(e.target.value)} 
-                        placeholder="Type new category name..." 
+                        placeholder="Type new category..." 
                         required 
                         className="w-full p-2.5 rounded-lg border border-blue-300 dark:border-blue-600 bg-blue-50 dark:bg-blue-900/20 focus:outline-none focus:ring-2 focus:ring-blue-500"
                       />
@@ -172,7 +189,6 @@ const Interview = () => {
           </div>
 
           <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm">
-            {/* UPDATED HEADER WITH DYNAMIC FILTER DROPDOWN */}
             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
               <h3 className="text-lg font-bold">My Interview Q&A Bank</h3>
               <div className="flex items-center gap-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg px-2 py-1">
@@ -251,7 +267,7 @@ const Interview = () => {
                   ) : (
                     <>
                       <p className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap">{fb.text}</p>
-                      <p className="text-[10px] text-yellow-600/60 dark:text-yellow-500/60 mt-2">{format(parseISO(fb.date), 'MMM do, yyyy')}</p>
+                      <p className="text-[10px] text-yellow-600/60 dark:text-yellow-500/60 mt-2">{safeFormatDate(fb.date)}</p>
                       <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition flex gap-1 bg-white dark:bg-gray-800 p-1 rounded-lg shadow-sm border border-gray-200">
                         <button onClick={() => { setEditingFeedbackId(fb.id); setEditFeedbackText(fb.text); }} className="p-1 text-gray-500 hover:text-blue-500"><Edit2 size={12}/></button>
                         <button onClick={() => handleDeleteFeedback(fb.id)} className="p-1 text-gray-500 hover:text-red-500"><Trash2 size={12}/></button>
