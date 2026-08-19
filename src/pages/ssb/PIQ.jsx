@@ -14,8 +14,8 @@ const defaultPIQ = {
   family: [
     { relation: 'Father', edu: '', occ: '', inc: '' },
     { relation: 'Mother', edu: '', occ: '', inc: '' },
-    { relation: 'Elder Sibling', edu: '', occ: '', inc: '' },
-    { relation: 'Younger Sibling', edu: '', occ: '', inc: '' }
+    { relation: 'Elder Sister', edu: '', occ: '', inc: '' },
+    { relation: 'Elder Brother', edu: '', occ: '', inc: '' }
   ],
   education: [
     { class: '10th', stream: '', inst: '', board: '', year: '', marks: '', medium: '', type: '', ach: '' },
