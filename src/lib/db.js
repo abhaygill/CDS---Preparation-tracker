@@ -13,7 +13,7 @@ db.version(1).stores({
 });
 
 // --- VERSION 2 (Added SSB tracking tables) ---
-db.version(2).stores({
+db.version(4).stores({
   subjects: '++id, name, color',
   subtopics: '++id, subjectId, title', 
   progress: '++id, subtopicId, subjectId', 
@@ -24,7 +24,8 @@ db.version(2).stores({
   // --- NEW SSB TABLES ---
   ssb_activities: '++id, date, category, subCategory, title', 
   ssb_feedback: '++id, category, date', 
-  ssb_io_prep: '++id, type' 
+  ssb_io_prep: '++id, type'
+  ssb_piq: 'id'
 });
 
 // Seed Data
@@ -67,7 +68,8 @@ export const exportData = async () => {
     tasks: await db.tasks.toArray(), // Fixed: Added tasks
     ssb_activities: await db.ssb_activities.toArray(), // Added SSB
     ssb_feedback: await db.ssb_feedback.toArray(),     // Added SSB
-    ssb_io_prep: await db.ssb_io_prep.toArray(),       // Added SSB
+    ssb_io_prep: await db.ssb_io_prep.toArray(), 
+    ssb_piq: await db.ssb_piq.toArray(),// Added SSB
   };
   const blob = new Blob([JSON.stringify(allData)], {type: "application/json"});
   const url = URL.createObjectURL(blob);
@@ -86,7 +88,7 @@ export const importData = async (file) => {
       // Define all tables we are writing to
       const tables = [
         db.subjects, db.subtopics, db.progress, db.sessions, db.tasks,
-        db.ssb_activities, db.ssb_feedback, db.ssb_io_prep
+        db.ssb_activities, db.ssb_feedback, db.ssb_io_prep, db.ssb_piq
       ];
       
       await db.transaction('rw', tables, async () => {
@@ -99,6 +101,7 @@ export const importData = async (file) => {
         if(data.ssb_activities) { await db.ssb_activities.clear(); await db.ssb_activities.bulkAdd(data.ssb_activities); }
         if(data.ssb_feedback) { await db.ssb_feedback.clear(); await db.ssb_feedback.bulkAdd(data.ssb_feedback); }
         if(data.ssb_io_prep) { await db.ssb_io_prep.clear(); await db.ssb_io_prep.bulkAdd(data.ssb_io_prep); }
+        if(data.ssb_piq) { await db.ssb_piq.clear(); await db.ssb_piq.bulkAdd(data.ssb_piq); }
       });
       window.location.reload();
     } catch (err) {
