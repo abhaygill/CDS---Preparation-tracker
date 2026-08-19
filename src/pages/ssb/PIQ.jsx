@@ -41,8 +41,18 @@ const PIQ = () => {
   
   const savedPIQ = useLiveQuery(() => db.ssb_piq?.get(1));
 
-  useEffect(() => {
-    if (savedPIQ) setFormData(savedPIQ);
+ useEffect(() => {
+    if (savedPIQ) {
+      // Force the database to update the labels while keeping your typed data
+      const fixedFamily = savedPIQ.family.map((member, i) => {
+        if (i === 0) return { ...member, relation: 'Father' };
+        if (i === 1) return { ...member, relation: 'Mother' };
+        if (i === 2) return { ...member, relation: 'Elder Sister' };
+        if (i === 3) return { ...member, relation: 'Elder Brother' };
+        return member;
+      });
+      setFormData({ ...savedPIQ, family: fixedFamily });
+    }
   }, [savedPIQ]);
 
   const handleSave = async () => {
