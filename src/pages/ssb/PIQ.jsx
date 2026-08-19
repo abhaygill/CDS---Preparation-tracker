@@ -25,12 +25,27 @@ const defaultPIQ = {
   age: '', height: '', weight: '',
   occPresent: '', occPast: '',
   nccAttended: '', nccDuration: '', nccWing: '', nccDiv: '', nccCert: '',
-  sports: '', hobbies: '', responsibilities: '',
+  
+  // --- NEW STRUCTURE FOR SECTION 12 ---
+  games: [
+    { name: '', duration: '', rep: '', ach: '' },
+    { name: '', duration: '', rep: '', ach: '' },
+    { name: '', duration: '', rep: '', ach: '' },
+    { name: '', duration: '', rep: '', ach: '' }
+  ],
+  hobbies: '',
+  extraCurriculars: [
+    { name: '', duration: '', ach: '' },
+    { name: '', duration: '', ach: '' },
+    { name: '', duration: '', ach: '' }
+  ],
+  
+  responsibilities: '',
   commission: '', serviceChoice: '', chances: '',
   previousInterviews: '', strengths: '', weaknesses: ''
 };
 
-// Helper component to render blue text for filled data, or standard underlines for blanks
+// Helper component to render blue text for filled data
 const Ans = ({ val, ph = '____________________' }) => (
   val ? <span className="text-blue-700 font-bold whitespace-pre-wrap">{val}</span> : <span className="text-black">{ph}</span>
 );
@@ -41,9 +56,9 @@ const PIQ = () => {
   
   const savedPIQ = useLiveQuery(() => db.ssb_piq?.get(1));
 
- useEffect(() => {
+  useEffect(() => {
     if (savedPIQ) {
-      // Force the database to update the labels while keeping your typed data
+      // Force database to use new family relations
       const fixedFamily = savedPIQ.family.map((member, i) => {
         if (i === 0) return { ...member, relation: 'Father' };
         if (i === 1) return { ...member, relation: 'Mother' };
@@ -51,7 +66,19 @@ const PIQ = () => {
         if (i === 3) return { ...member, relation: 'Elder Brother' };
         return member;
       });
-      setFormData({ ...savedPIQ, family: fixedFamily });
+
+      // Migrate existing users to the new Games & Extra-Curriculars table structure
+      const games = savedPIQ.games || defaultPIQ.games;
+      const extraCurriculars = savedPIQ.extraCurriculars || defaultPIQ.extraCurriculars;
+      const hobbies = savedPIQ.hobbies || '';
+
+      setFormData({ 
+        ...savedPIQ, 
+        family: fixedFamily,
+        games,
+        extraCurriculars,
+        hobbies
+      });
     }
   }, [savedPIQ]);
 
@@ -75,7 +102,6 @@ const PIQ = () => {
     }
   };
 
-  // Shared input styling for clear visibility
   const inputStyle = "w-full border border-gray-300 bg-white p-2 rounded text-blue-700 font-bold focus:ring-2 focus:ring-blue-500 focus:outline-none placeholder-gray-300";
   const inputStyleSmall = "w-full border border-gray-300 bg-white p-2 rounded text-blue-700 font-bold text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none placeholder-gray-300";
 
@@ -168,7 +194,7 @@ const PIQ = () => {
               </div>
             </div>
 
-            {/* Sections 9-15 */}
+            {/* Sections 9-11 */}
             <div className="grid grid-cols-3 gap-4">
               <div><label className="font-bold text-xs text-gray-700">9. Age (Yrs/Mo)</label><input name="age" value={formData.age} onChange={handleChange} className={inputStyleSmall}/></div>
               <div><label className="font-bold text-xs text-gray-700">Height (cm)</label><input name="height" value={formData.height} onChange={handleChange} className={inputStyleSmall}/></div>
@@ -185,9 +211,40 @@ const PIQ = () => {
               <div><label className="font-bold text-xs text-gray-700">Certificate</label><input name="nccCert" value={formData.nccCert} onChange={handleChange} className={inputStyleSmall}/></div>
             </div>
 
+            {/* --- SECTION 12: NEW TABLES --- */}
+            <div>
+              <label className="font-bold text-gray-700 mb-2 block">12. Participation in games & sports:</label>
+              <div className="space-y-2">
+                {formData.games.map((game, i) => (
+                  <div key={i} className="flex flex-col md:flex-row gap-2 bg-white p-2 border border-gray-200 rounded items-center">
+                    <span className="w-6 font-bold text-xs text-center">{i + 1}.</span>
+                    <input placeholder="Games / Sports" value={game.name} onChange={e => handleChange(e, 'games', i, 'name')} className={inputStyleSmall}/>
+                    <input placeholder="Period / Duration" value={game.duration} onChange={e => handleChange(e, 'games', i, 'duration')} className={inputStyleSmall}/>
+                    <input placeholder="Represented" value={game.rep} onChange={e => handleChange(e, 'games', i, 'rep')} className={inputStyleSmall}/>
+                    <input placeholder="Achievement" value={game.ach} onChange={e => handleChange(e, 'games', i, 'ach')} className={inputStyleSmall}/>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div><label className="font-bold text-gray-700">12 (a). Hobbies / Interest:</label><input name="hobbies" value={formData.hobbies} onChange={handleChange} className={inputStyle}/></div>
+
+            <div>
+              <label className="font-bold text-gray-700 mb-2 block">12 (b). Participation in extra curricular activities:</label>
+              <div className="space-y-2">
+                {formData.extraCurriculars.map((ec, i) => (
+                  <div key={i} className="flex flex-col md:flex-row gap-2 bg-white p-2 border border-gray-200 rounded items-center">
+                    <span className="w-6 font-bold text-xs text-center">{i + 1}.</span>
+                    <input placeholder="Name of activity" value={ec.name} onChange={e => handleChange(e, 'extraCurriculars', i, 'name')} className={inputStyleSmall}/>
+                    <input placeholder="Duration" value={ec.duration} onChange={e => handleChange(e, 'extraCurriculars', i, 'duration')} className={inputStyleSmall}/>
+                    <input placeholder="Achievement" value={ec.ach} onChange={e => handleChange(e, 'extraCurriculars', i, 'ach')} className={inputStyleSmall}/>
+                  </div>
+                ))}
+              </div>
+            </div>
+
             <div className="space-y-3">
-              <div><label className="font-bold text-gray-700">12. (a) Sports & Games / (b) Hobbies:</label><textarea name="sports" value={formData.sports} onChange={handleChange} className={`${inputStyleSmall} h-20`} placeholder="List sports, hobbies, extracurriculars..."/></div>
-              <div><label className="font-bold text-gray-700">12. (c) Position of Responsibility:</label><input name="responsibilities" value={formData.responsibilities} onChange={handleChange} className={inputStyle}/></div>
+              <div><label className="font-bold text-gray-700">12 (c). Position of Responsibility:</label><input name="responsibilities" value={formData.responsibilities} onChange={handleChange} className={inputStyle}/></div>
               <div className="grid grid-cols-2 gap-4">
                 <div><label className="font-bold text-gray-700">13. Nature of Commission:</label><input name="commission" value={formData.commission} onChange={handleChange} className={inputStyle}/></div>
                 <div><label className="font-bold text-gray-700">Choice of Service:</label><input name="serviceChoice" value={formData.serviceChoice} onChange={handleChange} className={inputStyle}/></div>
@@ -326,7 +383,51 @@ const PIQ = () => {
               </tbody>
             </table>
 
-            <div className="mt-4"><b>12. (a/b) Sports, Hobbies & Extra-Curriculars:</b><br/><Ans val={formData.sports} ph="__________________________________________________________________________________________" /></div>
+            {/* --- 12. NEW TABLE DISPLAYS --- */}
+            <div className="mt-4"><b>12. Participation in games & sports :-</b></div>
+            <table className="w-full border-collapse border border-black mt-1 text-center text-[12px]">
+              <tbody>
+                <tr className="font-bold border border-black">
+                  <td className="border border-black p-1 w-8">S. No.</td>
+                  <td className="border border-black p-1">Games / Sports</td>
+                  <td className="border border-black p-1">Period or duration</td>
+                  <td className="border border-black p-1">Represented School/College/Other</td>
+                  <td className="border border-black p-1">Outstanding achievement, if any</td>
+                </tr>
+                {formData.games.map((game, i) => (
+                  <tr key={i}>
+                    <td className="border border-black p-1 font-bold text-black">{i + 1}</td>
+                    <td className="border border-black p-1 h-6"><Ans val={game.name} ph=" "/></td>
+                    <td className="border border-black p-1"><Ans val={game.duration} ph=" "/></td>
+                    <td className="border border-black p-1"><Ans val={game.rep} ph=" "/></td>
+                    <td className="border border-black p-1"><Ans val={game.ach} ph=" "/></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+
+            <div className="mt-3"><b>12. (a) Hobbies/Interest:</b><br/><Ans val={formData.hobbies} ph="____________________________________________________________________________________________________" /></div>
+
+            <div className="mt-4"><b>12. (b) Participation in extra curricular activities :-</b></div>
+            <table className="w-full border-collapse border border-black mt-1 text-center text-[12px]">
+              <tbody>
+                <tr className="font-bold border border-black">
+                  <td className="border border-black p-1 w-8">S. No.</td>
+                  <td className="border border-black p-1">Name of the activity group</td>
+                  <td className="border border-black p-1">Duration of Participation</td>
+                  <td className="border border-black p-1">Outstanding achievement, if any</td>
+                </tr>
+                {formData.extraCurriculars.map((ec, i) => (
+                  <tr key={i}>
+                    <td className="border border-black p-1 font-bold text-black">{i + 1}</td>
+                    <td className="border border-black p-1 h-6"><Ans val={ec.name} ph=" "/></td>
+                    <td className="border border-black p-1"><Ans val={ec.duration} ph=" "/></td>
+                    <td className="border border-black p-1"><Ans val={ec.ach} ph=" "/></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+
             <div className="mt-3"><b>12. (c) Position of Responsibility:</b> <Ans val={formData.responsibilities} ph="________________________________________________________" /></div>
             
             <div className="mt-4 grid grid-cols-2 gap-2">
@@ -335,7 +436,7 @@ const PIQ = () => {
             </div>
 
             <div className="mt-3"><b>14. Chances availed for commission:</b> <Ans val={formData.chances} ph="________________________________" /></div>
-            <div className="mt-3"><b>15. Previous Interviews:</b><br/><Ans val={formData.previousInterviews} ph="__________________________________________________________________________________________" /></div>
+            <div className="mt-3"><b>15. Previous Interviews:</b><br/><Ans val={formData.previousInterviews} ph="____________________________________________________________________________________________________" /></div>
 
             {/* Print CSS overrides injected directly */}
             <style type="text/css">
