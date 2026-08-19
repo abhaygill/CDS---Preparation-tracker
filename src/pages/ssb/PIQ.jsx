@@ -442,11 +442,19 @@ const PIQ = () => {
             <style type="text/css">
               {`
                 @media print {
-                  @page { size: A4; margin: 20mm; }
+                  /* margin: 0 forces the browser to hide the default URL/Title headers and footers */
+                  @page { size: A4; margin: 0; } 
                   body * { visibility: hidden; }
                   .print-container, .print-container * { visibility: visible; }
-                  .print-container { position: absolute; left: 0; top: 0; width: 100%; }
-                  .page-break { page-break-before: always; margin-top: 20px; }
+                  .print-container { 
+                    position: absolute; 
+                    left: 0; 
+                    top: 0; 
+                    width: 100%; 
+                    padding: 20mm; /* We add the 20mm spacing back as padding here */
+                    box-sizing: border-box;
+                  }
+                  .page-break { page-break-before: always; padding-top: 20px; }
                 }
               `}
             </style>
