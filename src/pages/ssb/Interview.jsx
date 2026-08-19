@@ -104,7 +104,9 @@ const Interview = () => {
           </h1>
         </div>
       </div>
-
+        <Link to="/ssb/piq" className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold transition shadow-sm">
+           <FileText size={18} /> Open Master PIQ
+        </Link>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
         {/* LEFT COLUMN: PIQ & Q&A BANK */}
