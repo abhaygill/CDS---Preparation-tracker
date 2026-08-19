@@ -24,7 +24,7 @@ db.version(4).stores({
   // --- NEW SSB TABLES ---
   ssb_activities: '++id, date, category, subCategory, title', 
   ssb_feedback: '++id, category, date', 
-  ssb_io_prep: '++id, type'
+  ssb_io_prep: '++id, type',
   ssb_piq: 'id'
 });
 
