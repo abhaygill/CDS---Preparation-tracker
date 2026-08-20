@@ -142,7 +142,7 @@ const StudyTimer = () => {
             </div>
             
             <h3 className="text-2xl font-bold text-gray-900 dark:text-white leading-tight">
-              Yeh kya Kar raha hai Bhosdike? <br/> 
+              Yeh kya Kar raha hai?? <br/> 
               <span className="text-red-500">Aise karega CDS clear?</span>
             </h3>
             
